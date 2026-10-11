@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build APK Studio</title>
+<style>
+*{box-sizing:border-box}
+:root{--bg:#f5f8fc;--card:#fff;--line:#dce5f0;--text:#17243a;--muted:#71809a;--blue:#2867e8;--cyan:#11afd0;--green:#16a36a}
+body{margin:0;background:var(--bg);color:var(--text);font:13px Arial,sans-serif}
+.app{max-width:1180px;margin:auto;padding:16px}
+.topbar{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--blue),var(--cyan));display:grid;place-items:center;color:white;font-size:22px;font-weight:bold}
+h1{font-size:19px;margin:0}.sub,.hint,.foot{color:var(--muted);font-size:10px;margin-top:4px;line-height:1.5}
+.card,.api{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:12px;box-shadow:0 2px 10px #20406e09}
+.api{padding:14px}.apihead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.status{font-size:10px;padding:5px 9px;border-radius:20px;background:#edf2f7;color:#718096}
+.status.ok{background:#e8f8ef;color:#18834d}
+.apirow{display:flex;gap:8px}
+input,textarea{width:100%;min-width:0;padding:10px;border:1px solid #d9e2ee;border-radius:8px;background:white;color:var(--text);font:inherit;outline:none}
+input:focus,textarea:focus{border-color:#7ca7f7}
+textarea{min-height:85px;resize:vertical}
+button{cursor:pointer;font:inherit}
+.btn,.build{border:0;border-radius:9px;background:linear-gradient(90deg,var(--blue),var(--cyan));color:white;font-weight:bold;padding:10px 15px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 285px;gap:14px;align-items:start}
+.tabs{display:grid;grid-template-columns:1fr 1fr;padding:4px;background:#edf2f8;border-radius:10px;margin-bottom:12px}
+.tab{border:0;background:transparent;padding:9px;border-radius:7px;color:#718096;font-weight:bold}
+.tab.active{background:white;color:var(--blue)}
+.head{display:flex;align-items:center;gap:8px;background:#f0f5fa;border-bottom:1px solid var(--line);padding:11px 13px}
+.num{width:20px;height:20px;border-radius:50%;background:var(--blue);color:white;display:grid;place-items:center;font-size:10px;font-weight:bold}
+.head strong{font-size:12px}
+.body{padding:13px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field{min-width:0}.field label,.section{display:block;font-size:9px;font-weight:bold;letter-spacing:.4px;text-transform:uppercase;color:#7184a0;margin-bottom:6px}
+.section{margin:2px 0 8px}
+.source{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}
+.source button{border:1px solid var(--line);background:white;color:#63748e;border-radius:8px;padding:9px}
+.source button.active{background:var(--blue);border-color:var(--blue);color:white}
+.uploadgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.upload{border:1px dashed #cbd9ea;border-radius:9px;padding:14px 8px;text-align:center;display:block;cursor:pointer;color:#637894}
+.upload input{display:none}.upload span{display:block;font-size:22px;margin-bottom:5px}
+.colorrow{display:grid;grid-template-columns:38px 1fr;gap:8px;margin-top:12px}
+.colorrow input[type=color]{padding:2px;height:36px}
+.toggles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:55px;padding:9px 10px;border:1px solid #dce5ef;background:#f3f6fa;border-radius:9px;cursor:pointer;transition:background .2s,border .2s}
+.toggle.on{background:#edf4ff;border-color:#9bc0ff}
+.tt{font-size:11px;font-weight:600}.desc{font-size:9px;color:#8494aa;margin-top:4px;line-height:1.3}
+.switch{flex-shrink:0;width:32px;height:18px;background:#cbd6e3;border-radius:20px;position:relative}
+.switch:after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:white;transition:.2s}
+.toggle.on .switch{background:var(--blue)}.toggle.on .switch:after{left:16px}
+.accordion{margin-bottom:12px}
+.accordion .head{width:100%;border:0;text-align:left;cursor:pointer}
+.chevron{margin-left:auto;transition:transform .25s;color:#74849b}
+.accordion.open .chevron{transform:rotate(180deg)}
+.accordion-content{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s ease}
+.accordion.open .accordion-content{grid-template-rows:1fr}
+.accordion-inner{overflow:hidden;min-height:0}
+.pro{display:grid;gap:8px}.pro .toggle:nth-child(1){background:#edf9ff}
+.pro .toggle:nth-child(2){background:#f6f1ff}.pro .toggle:nth-child(3){background:#fff6eb}
+.preview{padding:15px;text-align:center}
+.appicon{width:58px;height:58px;border-radius:14px;background:#dceaff;color:var(--blue);display:grid;place-items:center;margin:0 auto 9px;font-size:26px}
+.pvname{font-weight:bold;font-size:14px}.pvpackage{font-size:10px;color:var(--muted);margin:4px 0 12px;overflow-wrap:anywhere}
+.meta{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);padding-top:10px;font-size:9px;color:var(--muted)}
+.meta b{display:block;color:var(--text);font-size:10px;margin-bottom:4px}
+.deep{margin-top:10px;padding:9px;background:#f5f8fc;border:1px solid var(--line);border-radius:7px;font-size:9px;color:#71809a;overflow-wrap:anywhere}
+.side{position:sticky;top:12px}.build{width:100%;padding:13px;margin-top:9px}
+.export{width:100%;padding:10px;background:white;color:var(--blue);border:1px solid #c8d9f5;border-radius:9px;font-weight:bold;margin-top:8px}
+.result{display:none;margin-top:10px;padding:11px;border-radius:8px;background:#eaf8ef;color:#167547;font-size:11px;overflow-wrap:anywhere;line-height:1.6}
+.result.show{display:block}.result.err{background:#fff0f0;color:#b42318}
+.terminal{background:#101827;color:#d4e2f7;border-radius:10px;overflow:hidden;margin-top:12px;border:1px solid #25364f}
+.termhead{display:flex;align-items:center;gap:7px;background:#18253a;padding:10px 12px;font-size:11px;font-weight:bold}
+.dot{width:8px;height:8px;border-radius:50%;background:#28c77b}
+#terminalOutput{padding:12px;height:180px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.6 ui-monospace,monospace}
+.termline{color:#8ca6c9}.termline.good{color:#70e0a5}.termline.bad{color:#ff9a9a}
+.buildbar{display:none}
+.reveal{opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+@media(max-width:760px){
+ .app{padding:9px 9px 110px}.layout{grid-template-columns:1fr}
+ .side{position:static;order:2}.toggles{grid-template-columns:1fr}
+ .apirow{flex-direction:column}.apirow .btn{width:100%}
+ h1{font-size:17px}
+ .buildbar{display:block;position:fixed;z-index:20;left:0;right:0;bottom:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line);box-shadow:0 -5px 20px #203c6010}
+ .buildbar button{width:100%;padding:14px;font-size:14px}
+ .side .build{display:none}
+}
+@media(min-width:761px) and (max-width:1050px){.layout{grid-template-columns:minmax(0,1fr) 255px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="topbar reveal"><div class="logo">⚡</div><div><h1>Build APK Studio</h1><div class="sub">Configure your project and build an Android APK</div></div></header>
+
+<section class="api reveal">
+ <div class="apihead"><strong>🔌 API Connection</strong><span id="apiStatus" class="status">Not Connected</span></div>
+ <div class="apirow"><input id="apiUrl" type="url" placeholder="https://your-api.com/build"><button class="btn" id="saveApi">Save API</button></div>
+ <div class="foot">Paste your backend API URL and save it before building.</div>
+</section>
+
+<div class="layout">
+<main>
+<div class="tabs reveal"><button class="tab active" type="button">🌐 HTML / CSS / JS</button><button class="tab" type="button" onclick="alert('Kotlin/Java mode requires backend support.')">〈〉 Kotlin / Java</button></div>
+
+<section class="card reveal">
+ <div class="head"><span class="num">1</span><strong>App Information</strong></div>
+ <div class="body">
+  <div class="grid2"><div class="field"><label>App Name *</label><input id="appName" value="My App"></div><div class="field"><label>Package Name *</label><input id="packageName" value="com.example.app"><div class="hint">Example: com.company.myapp</div></div></div>
+  <label class="section" style="margin-top:13px">App Source</label>
+  <div class="source"><button id="webBtn" class="active" type="button" onclick="setSource('web')">🌐 Website URL</button><button id="htmlBtn" type="button" onclick="setSource('html')">📁 HTML Code</button></div>
+  <div id="webSource" class="field"><label>Website URL *</label><input id="websiteUrl" type="url" placeholder="https://mywebsite.com"></div>
+  <div id="htmlSource" class="field" style="display:none"><label>HTML Code *</label><textarea id="htmlCode" placeholder="Paste your complete HTML, CSS and JavaScript code here..."></textarea></div>
+  <div class="grid2" style="margin-top:12px"><div class="field"><label>Version Name</label><input id="versionName" value="1.0"></div><div class="field"><label>Version Code</label><input id="versionCode" type="number" min="1" value="1"></div></div>
+ </div>
+</section>
+
+<section class="card reveal">
+ <div class="head"><span class="num">2</span><strong>Icon & Branding</strong></div>
+ <div class="body">
+  <div class="uploadgrid">
+   <label class="upload"><input id="appIcon" type="file" accept="image/png,image/jpeg"><span>▣</span><b>App Icon</b><div class="hint" id="iconName">512×512 PNG</div></label>
+   <label class="upload"><input id="splash" type="file" accept="image/png,image/jpeg"><span>▧</span><b>Splash Screen</b><div class="hint" id="splashName">Splash image</div></label>
+  </div>
+  <div class="field" style="margin-top:13px"><label>Status Bar Color</label><div class="colorrow"><input id="barColor" type="color" value="#2563eb"><input id="barHex" value="#2563eb"></div></div>
+ </div>
+</section>
+
+<section class="card reveal">
+ <div class="head"><span class="num">3</span><strong>Behavior & Permissions</strong></div>
+ <div class="body">
+  <div class="section">App Behavior</div><div class="toggles" id="behavior"></div>
+  <div class="section" style="margin-top:14px">Interaction</div><div class="toggles" id="interaction"></div>
+  <div class="section" style="margin-top:14px">Permissions</div><div class="toggles" id="permissions"></div>
+  <div class="section" style="margin-top:14px">Appearance</div><div class="toggles" id="appearance"></div>
+ </div>
+</section>
+
+<section class="card accordion reveal" id="proAccordion">
+ <button class="head" type="button" style="width:100%;text-align:left;border:0" onclick="toggleAccordion('proAccordion')"><span class="num">4</span><strong>Pro Features</strong><span class="chevron">⌄</span></button>
+ <div class="accordion-content"><div class="accordion-inner"><div class="body pro" id="proFeatures"></div></div></div>
+</section>
+
+<section class="card reveal">
+ <div class="head"><span class="num">5</span><strong>Share & Rate</strong></div>
+ <div class="body">
+  <div class="field"><label>Share Message</label><input id="shareMessage" placeholder="Check out this app!"></div>
+  <div class="field" style="margin-top:12px"><label>Share Link (Optional)</label><input id="shareLink" type="url" placeholder="https://example.com/app"></div>
+ </div>
+</section>
+
+<section class="card accordion reveal" id="advancedAccordion">
+ <button class="head" type="button" style="width:100%;text-align:left;border:0" onclick="toggleAccordion('advancedAccordion')"><span class="num">6</span><strong>Advanced Developer</strong><span class="chevron">⌄</span></button>
+ <div class="accordion-content"><div class="accordion-inner"><div class="body">
+  <div class="field"><label>Custom CSS</label><textarea id="customCss" placeholder="body { font-size: 14px; }"></textarea></div>
+  <div class="field" style="margin-top:12px"><label>Custom JavaScript</label><textarea id="customJs" placeholder="console.log('App loaded');"></textarea></div>
+  <div class="field" style="margin-top:12px"><label>Refresh Webhook URL</label><input id="crashWebhook" type="url" placeholder="https://yourserver.com/refresh"></div>
+  <div class="field" style="margin-top:12px"><label>Build Complete Webhook URL</label><input id="buildWebhook" type="url" placeholder="https://yourserver.com/build-complete"></div>
+ </div></div></div>
+</section>
+</main>
+
+<aside class="side reveal">
+ <section class="card preview"><div class="appicon">▯</div><div class="pvname" id="previewName">My App</div><div class="pvpackage" id="previewPkg">com.example.app</div><div class="meta"><div><b id="pvVersion">1.0</b>Version</div><div><b>Android 5+</b>Min SDK</div><div><b>~20 MB</b>Size</div></div><div class="deep">🔗 Deeplink: <span id="previewDeep">com.example.app://</span></div></section>
+ <button class="build" type="button" onclick="buildApk()">⚡ BUILD APK</button>
+ <button class="export" id="exportBtn" type="button">Export Configuration JSON</button>
+ <div id="result" class="result"></div>
+ <section class="terminal"><div class="termhead"><span class="dot"></span> BUILD TERMINAL <span style="margin-left:auto;color:#8296b4;font-weight:normal" id="termStatus">Ready</span></div><div id="terminalOutput"><span class="termline">[system] Ready. Configure your API to start a build.</span></div></section>
+ <div class="foot">Live build logs appear here only if your backend streams or returns logs. The backend performs the actual APK build.</div>
+</aside>
+</div>
+</div>
+
+<div class="buildbar"><button class="build" type="button" onclick="buildApk()">⚡ BUILD APK</button></div>
+
+<script>
+const state={source:"web",toggles:{}};
+const groups={
+behavior:[["hide_title_bar","Hide Title Bar","Hides the toolbar",true],["loading_spinner","Loading Spinner","Page loading indicator",false],["fullscreen","Full Screen","Hides the status bar",false],["exit_confirmation","Exit Confirmation","Confirm before exiting",true]],
+interaction:[["pull_to_refresh","Pull to Refresh","Swipe down to refresh",false],["pinch_zoom","Pinch to Zoom","Allow pinch zoom",false],["media_autoplay","Media Autoplay","Auto-play website media",false],["pc_mode","PC Mode","Desktop website mode",false],["long_press_menu","Long Press Menu","Enable context menu",false]],
+permissions:[["camera_access","Camera Access","Allow camera permission",false],["microphone_access","Microphone Access","Allow microphone permission",false]],
+appearance:[["dark_mode_support","Dark Mode Support","Website dark appearance",false]]
+};
+const pro=[["aes256_encryption","AES-256 Encryption","Requires backend implementation"],["fcm_push_notifications","FCM Push Notifications","Requires Firebase setup"],["admob_ads","AdMob Banner + Interstitial","Requires AdMob integration"]];
+function addToggle(item,root){const[id,title,desc,initial]=item;state.toggles[id]=initial;const el=document.createElement("div");el.className="toggle"+(initial?" on":"");el.innerHTML='<div><div class="tt"></div><div class="desc"></div></div><span class="switch"></span>';el.querySelector(".tt").textContent=title;el.querySelector(".desc").textContent=desc;el.onclick=()=>{state.toggles[id]=!state.toggles[id];el.classList.toggle("on",state.toggles[id])};root.appendChild(el)}
+Object.entries(groups).forEach(([key,items])=>items.forEach(item=>addToggle(item,document.getElementById(key))));pro.forEach(item=>addToggle(item,document.getElementById("proFeatures")));
+function toggleAccordion(id){document.getElementById(id).classList.toggle("open")}
+function setSource(source){state.source=source;document.getElementById("webBtn").classList.toggle("active",source==="web");document.getElementById("htmlBtn").classList.toggle("active",source==="html");document.getElementById("webSource").style.display=source==="web"?"block":"none";document.getElementById("htmlSource").style.display=source==="html"?"block":"none"}
+function updatePreview(){const n=document.getElementById("appName").value||"My App",p=document.getElementById("packageName").value||"com.example.app";document.getElementById("previewName").textContent=n;document.getElementById("previewPkg").textContent=p;document.getElementById("previewDeep").textContent=p+"://";document.getElementById("pvVersion").textContent=document.getElementById("versionName").value||"1.0"}
+["appName","packageName","versionName"].forEach(id=>document.getElementById(id).addEventListener("input",updatePreview));
+document.getElementById("appIcon").addEventListener("change",e=>document.getElementById("iconName").textContent=e.target.files[0]?.name||"512×512 PNG");
+document.getElementById("splash").addEventListener("change",e=>document.getElementById("splashName").textContent=e.target.files[0]?.name||"Splash image");
+document.getElementById("barColor").addEventListener("input",e=>document.getElementById("barHex").value=e.target.value);
+document.getElementById("barHex").addEventListener("input",e=>{if(/^#[0-9a-f]{6}$/i.test(e.target.value))document.getElementById("barColor").value=e.target.value});
+
+const apiInput=document.getElementById("apiUrl"),apiStatus=document.getElementById("apiStatus");
+apiInput.value=localStorage.getItem("apk_builder_api_url")||"";
+function refreshApiStatus(){const saved=!!localStorage.getItem("apk_builder_api_url");apiStatus.textContent=saved?"API Saved":"Not Connected";apiStatus.className="status"+(saved?" ok":"")}
+refreshApiStatus();
+document.getElementById("saveApi").addEventListener("click",()=>{const value=apiInput.value.trim();try{new URL(value);localStorage.setItem("apk_builder_api_url",value);refreshApiStatus();log("API URL saved on this device.","good")}catch(e){apiStatus.textContent="Invalid URL";apiStatus.className="status";log("Please enter a valid API URL.","bad")}});
+
+const terminal=document.getElementById("terminalOutput"),termStatus=document.getElementById("termStatus");
+function log(message,type=""){const line=document.createElement("div");line.className="termline "+type;line.textContent="["+new Date().toLocaleTimeString()+"] "+message;terminal.appendChild(line);terminal.scrollTop=terminal.scrollHeight}
+function collectConfig(){return{app_name:document.getElementById("appName").value.trim(),package_name:document.getElementById("packageName").value.trim(),resource_type:state.source,website_url:document.getElementById("websiteUrl").value.trim(),html_code:document.getElementById("htmlCode").value,version_name:document.getElementById("versionName").value.trim(),version_code:document.getElementById("versionCode").value,status_bar_color:document.getElementById("barHex").value,features:state.toggles,share:{message:document.getElementById("shareMessage").value,link:document.getElementById("shareLink").value},advanced:{custom_css:document.getElementById("customCss").value,custom_javascript:document.getElementById("customJs").value,refresh_webhook_url:document.getElementById("crashWebhook").value,build_complete_webhook_url:document.getElementById("buildWebhook").value}}}
+document.getElementById("exportBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(collectConfig(),null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="apk-builder-config.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);log("Configuration JSON exported.","good")});
+
+async function buildApk(){
+ const result=document.getElementById("result");result.className="result show";result.textContent="";
+ const api=localStorage.getItem("apk_builder_api_url")||apiInput.value.trim(),cfg=collectConfig();
+ if(!api){result.classList.add("err");result.textContent="Save your API URL first.";log("Build stopped: API URL not configured.","bad");return}
+ if(!cfg.app_name||!cfg.package_name){result.classList.add("err");result.textContent="App Name and Package Name are required.";log("Build stopped: missing app details.","bad");return}
+ if(state.source==="web"&&!cfg.website_url){result.classList.add("err");result.textContent="Please enter a Website URL.";log("Build stopped: missing website URL.","bad");return}
+ if(state.source==="html"&&!cfg.html_code.trim()){result.classList.add("err");result.textContent="Please paste your HTML code.";log("Build stopped: HTML code is empty.","bad");return}
+ const form=new FormData();form.append("config",JSON.stringify(cfg));
+ const icon=document.getElementById("appIcon").files[0],splash=document.getElementById("splash").files[0];
+ if(icon)form.append("app_icon",icon);if(splash)form.append("splash_image",splash);
+ if(state.source==="html")form.append("html_file",new Blob([cfg.html_code],{type:"text/html"}),"index.html");
+ result.textContent="Build request sent. Check terminal for updates.";termStatus.textContent="Running";terminal.innerHTML="";log("Preparing build request…");log("Connecting to build API…");
+ try{
+  const response=await fetch(api,{method:"POST",body:form});
+  log("Server responded with HTTP "+response.status,response.ok?"good":"bad");
+  const contentType=response.headers.get("content-type")||"";
+  if(!response.ok){const message=contentType.includes("application/json")?(await response.json().catch(()=>({}))).message:"HTTP "+response.status;throw new Error(response.status===409?"Build server is busy. Try again later.":(message||"Build request failed."))}
+  if(response.body&&response.headers.get("content-type")?.includes("text/event-stream")){
+   const reader=response.body.getReader(),decoder=new TextDecoder();let buffer="";
+   while(true){const{value,done}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});const parts=buffer.split("\n");buffer=parts.pop();for(const part of parts){const line=part.replace(/^data:\s?/,"").trim();if(!line||line.startsWith(":"))continue;try{const event=JSON.parse(line);if(event.message)log(event.message,event.error?"bad":event.done?"good":"");if(event.download_url){const a=document.createElement("a");a.href=event.download_url;a.target="_blank";a.rel="noopener";a.textContent="Download APK";result.appendChild(document.createElement("br"));result.appendChild(a)}if(event.done)termStatus.textContent="Complete"}catch(e){log(line)}}}
+   result.textContent="Build stream finished. See terminal for logs.";termStatus.textContent="Complete";log("Stream closed.","good");return;
+  }
+  const data=contentType.includes("application/json")?await response.json():{message:await response.text()};
+  if(Array.isArray(data.logs))data.logs.forEach(item=>log(typeof item==="string"?item:JSON.stringify(item)));
+  if(data.message)log(data.message,"good");
+  result.textContent=data.message||"Build request completed.";
+  if(data.download_url){const a=document.createElement("a");a.href=data.download_url;a.target="_blank";a.rel="noopener";a.textContent="Download APK";result.appendChild(document.createElement("br"));result.appendChild(a);log("APK download link received.","good")}
+  termStatus.textContent="Complete";
+ }catch(error){result.classList.add("err");result.textContent=error.message||"Could not connect to the API.";log(error.message||"Network error.","bad");termStatus.textContent="Error"}
+}
+const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add("visible");observer.unobserve(entry.target)}}),{threshold:.08});
+document.querySelectorAll(".reveal").forEach(el=>observer.observe(el));
+updatePreview();
+</script>
+</body>
+</html>
