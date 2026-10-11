@@ -11,6 +11,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.webkit.ValueCallback
 import android.webkit.WebView
+import android.util.Base64
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -70,6 +71,10 @@ import com.example.config.TemplateAppConfig
 import com.example.ui.theme.AppTemplateTheme
 import com.example.webview.TemplateWebViewCallbacks
 import com.example.webview.TemplateWebViewController
+import java.nio.charset.StandardCharsets
+import javax.crypto.Cipher
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 /**
  * UI state representing the status of the embedded local HTML application.
@@ -359,7 +364,7 @@ fun WebApkTemplateHost(
                 if (savedStateBundle != null && !savedStateBundle.isEmpty) {
                   webView.restoreState(savedStateBundle)
                 } else {
-                  webView.loadUrl(config.webStartUrl.ifBlank { config.webEntryUrl })
+                  loadConfiguredEntry(ctx, webView, config)
                 }
               }
             },
@@ -394,12 +399,35 @@ fun WebApkTemplateHost(
               TemplateAppConfig.verifyEntryAssetExists(context, config.webEntryAssetPath)
             if (assetNowExists) {
               containerState = WebContainerState.Ready
-              activeWebView?.loadUrl(config.webStartUrl.ifBlank { config.webEntryUrl })
+                activeWebView?.let { loadConfiguredEntry(context, it, config) }
             }
           },
         )
       }
     }
+  }
+}
+
+/** Loads a remote URL normally, or decrypts the local AES-GCM entry only in memory. */
+private fun loadConfiguredEntry(context: android.content.Context, webView: WebView, config: TemplateAppConfig) {
+  if (config.webStartUrl.isNotBlank() || !config.encryptedAssets) {
+    webView.loadUrl(config.webStartUrl.ifBlank { config.webEntryUrl })
+    return
+  }
+  try {
+    val blob = context.assets.open("${TemplateAppConfig.DEFAULT_WEB_FOLDER}/index.html.enc").use { it.readBytes() }
+    require(blob.size > 16 && String(blob, 0, 4, StandardCharsets.US_ASCII) == "DVL1")
+    val nonce = blob.copyOfRange(4, 16)
+    val ciphertext = blob.copyOfRange(16, blob.size)
+    val key = Base64.decode(config.encryptionKeyBase64, Base64.DEFAULT)
+    require(key.size == 32)
+    val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+    cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, nonce))
+    val html = String(cipher.doFinal(ciphertext), StandardCharsets.UTF_8)
+    webView.loadDataWithBaseURL(config.webEntryUrl, html, "text/html", "UTF-8", config.webEntryUrl)
+  } catch (error: Exception) {
+    android.util.Log.e("WebApkTemplate", "Could not decrypt encrypted HTML entry", error)
+    webView.loadDataWithBaseURL(config.webEntryUrl, "<h1>Unable to open encrypted app</h1>", "text/html", "UTF-8", config.webEntryUrl)
   }
 }
 

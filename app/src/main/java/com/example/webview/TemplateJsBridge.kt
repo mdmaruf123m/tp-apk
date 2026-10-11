@@ -35,6 +35,7 @@ class TemplateJsBridge(
         put("fullscreen", config.fullscreen)
         put("darkMode", config.darkMode)
         put("codeSecurity", config.codeSecurity)
+        put("assetEncryption", config.encryptedAssets)
       })
       put("androidSdkInt", Build.VERSION.SDK_INT)
       put("deviceModel", Build.MODEL ?: "Android")

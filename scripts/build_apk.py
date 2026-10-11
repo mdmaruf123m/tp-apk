@@ -165,6 +165,35 @@ def write_html(payload: dict) -> None:
         target.write_text(text, encoding="utf-8")
 
 
+def encrypt_html_asset(payload: dict) -> str | None:
+    """Encrypt the generated local entry HTML with AES-256-GCM.
+
+    The runtime key is injected into BuildConfig for the template to decrypt in memory. This
+    protects the packaged asset from casual extraction; it cannot defeat a determined reverse
+    engineer because any offline APK must ultimately contain its decryption capability.
+    """
+    config = payload["config"]
+    enabled = bool((config.get("pro_features") or {}).get("asset_encryption", False))
+    entry = ROOT / "app/src/main/assets/web/index.html"
+    encrypted = ROOT / "app/src/main/assets/web/index.html.enc"
+    if not enabled:
+        if encrypted.exists():
+            encrypted.unlink()
+        return None
+    if config.get("resource_type") != "html" or not entry.is_file():
+        raise RuntimeError("AES-256 Asset Encryption requires a local HTML entry file.")
+    try:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    except ImportError as exc:
+        raise RuntimeError("AES-256 Asset Encryption requires the cryptography package.") from exc
+    key = os.urandom(32)
+    nonce = os.urandom(12)
+    ciphertext = AESGCM(key).encrypt(nonce, entry.read_bytes(), None)
+    encrypted.write_bytes(b"DVL1" + nonce + ciphertext)
+    entry.unlink()
+    return base64.b64encode(key).decode("ascii")
+
+
 def make_square(image: Image.Image, size: int, *, contain: bool = False) -> Image.Image:
     image = ImageOps.exif_transpose(image).convert("RGBA")
     if contain:
@@ -262,6 +291,7 @@ def apply_config(payload: dict) -> list[str]:
         raise RuntimeError("Invalid Android package name.")
     update_app_name(str(config["app_name"]))
     write_html(payload)
+    encryption_key = encrypt_html_asset(payload)
     files = payload.get("files") or {}
     icon = decode_file(files.get("app_icon"))
     splash = decode_file(files.get("splash_image"))
@@ -280,7 +310,12 @@ def apply_config(payload: dict) -> list[str]:
         f"-PVERSION_NAME={config.get('version_name', '1.0.0')}",
         f"-PVERSION_CODE={int(config.get('version_code', 1))}",
         f"-PWEB_START_URL={website_url}",
+        "-PENCRYPTED_ASSETS=true" if encryption_key else "-PENCRYPTED_ASSETS=false",
     ]
+    if encryption_key:
+        os.environ["ENCRYPTION_KEY_B64"] = encryption_key
+    else:
+        os.environ.pop("ENCRYPTION_KEY_B64", None)
     color = str(config.get("status_bar_color", "#0F172A"))
     if re.fullmatch(r"#[0-9a-fA-F]{6}", color):
         build_args.append(f"-PSPLASH_BG_COLOR={color}")

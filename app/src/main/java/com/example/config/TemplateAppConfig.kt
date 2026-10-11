@@ -34,6 +34,8 @@ data class TemplateAppConfig(
   val microphoneAccess: Boolean,
   val darkMode: Boolean,
   val codeSecurity: Boolean,
+  val encryptedAssets: Boolean,
+  val encryptionKeyBase64: String,
 ) {
   companion object {
     const val ASSET_URL_PREFIX = "file:///android_asset/"
@@ -112,6 +114,8 @@ data class TemplateAppConfig(
         microphoneAccess = BuildConfig.MICROPHONE_ACCESS,
         darkMode = BuildConfig.DARK_MODE,
         codeSecurity = BuildConfig.CODE_SECURITY,
+        encryptedAssets = BuildConfig.ENCRYPTED_ASSETS,
+        encryptionKeyBase64 = BuildConfig.ENCRYPTION_KEY_B64,
       )
     }
 
@@ -119,7 +123,11 @@ data class TemplateAppConfig(
     fun verifyEntryAssetExists(context: Context, assetPath: String): Boolean {
       val sanitized = sanitizeAssetPath(assetPath)
       return try {
-        context.assets.open(sanitized).use { true }
+        if (BuildConfig.ENCRYPTED_ASSETS && sanitized == "$DEFAULT_WEB_FOLDER/index.html") {
+          context.assets.open("$DEFAULT_WEB_FOLDER/index.html.enc").use { true }
+        } else {
+          context.assets.open(sanitized).use { true }
+        }
       } catch (_: Exception) {
         false
       }

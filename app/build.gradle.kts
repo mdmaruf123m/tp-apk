@@ -58,6 +58,8 @@ val configCameraAccess = getConfigProperty("CAMERA_ACCESS", "false").toBoolean()
 val configMicrophoneAccess = getConfigProperty("MICROPHONE_ACCESS", "false").toBoolean()
 val configDarkMode = getConfigProperty("DARK_MODE", "false").toBoolean()
 val configCodeSecurity = getConfigProperty("CODE_SECURITY", "false").toBoolean()
+val configEncryptedAssets = getConfigProperty("ENCRYPTED_ASSETS", "false").toBoolean()
+val configEncryptionKey = getConfigProperty("ENCRYPTION_KEY_B64", "")
 
 android {
   // Namespace remains fixed for internal R class and source package stability
@@ -101,6 +103,8 @@ android {
     buildConfigField("boolean", "MICROPHONE_ACCESS", configMicrophoneAccess.toString())
     buildConfigField("boolean", "DARK_MODE", configDarkMode.toString())
     buildConfigField("boolean", "CODE_SECURITY", configCodeSecurity.toString())
+    buildConfigField("boolean", "ENCRYPTED_ASSETS", configEncryptedAssets.toString())
+    buildConfigField("String", "ENCRYPTION_KEY_B64", javaStringLiteral(configEncryptionKey))
   }
 
   // Do not remove or modify these signingConfigs. They are necessary for building, installing,

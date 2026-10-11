@@ -215,6 +215,17 @@ async def _validate_config(raw: str) -> dict[str, Any]:
             raise HTTPException(status_code=413, detail=f"HTML source exceeds {MAX_HTML_CHARS} characters.")
         config["html_code"] = html_code
 
+    pro_features = config.get("pro_features") or {}
+    if not isinstance(pro_features, dict):
+        raise HTTPException(status_code=400, detail="pro_features must be an object.")
+    asset_encryption = bool(pro_features.get("asset_encryption", False))
+    subscription_active = bool(config.get("subscription_active", False))
+    if asset_encryption and source != "html":
+        raise HTTPException(status_code=400, detail="AES-256 Asset Encryption is available for local HTML projects only.")
+    if asset_encryption and not subscription_active:
+        raise HTTPException(status_code=403, detail="An active paid subscription is required for AES-256 Asset Encryption.")
+    config["pro_features"] = {**pro_features, "asset_encryption": asset_encryption}
+    config["subscription_active"] = subscription_active
     config["app_name"] = app_name
     config["package_name"] = package_name
     config["version_name"] = version_name
