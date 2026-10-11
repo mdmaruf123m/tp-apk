@@ -23,9 +23,6 @@ textarea{min-height:85px;resize:vertical}
 button{cursor:pointer;font:inherit}
 .btn,.build{border:0;border-radius:9px;background:linear-gradient(90deg,var(--blue),var(--cyan));color:white;font-weight:bold;padding:10px 15px}
 .layout{display:grid;grid-template-columns:minmax(0,1fr) 285px;gap:14px;align-items:start}
-.tabs{display:grid;grid-template-columns:1fr 1fr;padding:4px;background:#edf2f8;border-radius:10px;margin-bottom:12px}
-.tab{border:0;background:transparent;padding:9px;border-radius:7px;color:#718096;font-weight:bold}
-.tab.active{background:white;color:var(--blue)}
 .head{display:flex;align-items:center;gap:8px;background:#f0f5fa;border-bottom:1px solid var(--line);padding:11px 13px}
 .num{width:20px;height:20px;border-radius:50%;background:var(--blue);color:white;display:grid;place-items:center;font-size:10px;font-weight:bold}
 .head strong{font-size:12px}
@@ -40,13 +37,6 @@ button{cursor:pointer;font:inherit}
 .upload input{display:none}.upload span{display:block;font-size:22px;margin-bottom:5px}
 .colorrow{display:grid;grid-template-columns:38px 1fr;gap:8px;margin-top:12px}
 .colorrow input[type=color]{padding:2px;height:36px}
-.toggles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:55px;padding:9px 10px;border:1px solid #dce5ef;background:#f3f6fa;border-radius:9px;cursor:pointer;transition:background .2s,border .2s}
-.toggle.on{background:#edf4ff;border-color:#9bc0ff}
-.tt{font-size:11px;font-weight:600}.desc{font-size:9px;color:#8494aa;margin-top:4px;line-height:1.3}
-.switch{flex-shrink:0;width:32px;height:18px;background:#cbd6e3;border-radius:20px;position:relative}
-.switch:after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:white;transition:.2s}
-.toggle.on .switch{background:var(--blue)}.toggle.on .switch:after{left:16px}
 .accordion{margin-bottom:12px}
 .accordion .head{width:100%;border:0;text-align:left;cursor:pointer}
 .chevron{margin-left:auto;transition:transform .25s;color:#74849b}
@@ -54,14 +44,11 @@ button{cursor:pointer;font:inherit}
 .accordion-content{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s ease}
 .accordion.open .accordion-content{grid-template-rows:1fr}
 .accordion-inner{overflow:hidden;min-height:0}
-.pro{display:grid;gap:8px}.pro .toggle:nth-child(1){background:#edf9ff}
-.pro .toggle:nth-child(2){background:#f6f1ff}.pro .toggle:nth-child(3){background:#fff6eb}
 .preview{padding:15px;text-align:center}
 .appicon{width:58px;height:58px;border-radius:14px;background:#dceaff;color:var(--blue);display:grid;place-items:center;margin:0 auto 9px;font-size:26px}
 .pvname{font-weight:bold;font-size:14px}.pvpackage{font-size:10px;color:var(--muted);margin:4px 0 12px;overflow-wrap:anywhere}
-.meta{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);padding-top:10px;font-size:9px;color:var(--muted)}
+.meta{display:grid;grid-template-columns:repeat(2,1fr);border-top:1px solid var(--line);padding-top:10px;font-size:9px;color:var(--muted)}
 .meta b{display:block;color:var(--text);font-size:10px;margin-bottom:4px}
-.deep{margin-top:10px;padding:9px;background:#f5f8fc;border:1px solid var(--line);border-radius:7px;font-size:9px;color:#71809a;overflow-wrap:anywhere}
 .side{position:sticky;top:12px}.build{width:100%;padding:13px;margin-top:9px}
 .export{width:100%;padding:10px;background:white;color:var(--blue);border:1px solid #c8d9f5;border-radius:9px;font-weight:bold;margin-top:8px}
 .result{display:none;margin-top:10px;padding:11px;border-radius:8px;background:#eaf8ef;color:#167547;font-size:11px;overflow-wrap:anywhere;line-height:1.6}
@@ -76,7 +63,7 @@ button{cursor:pointer;font:inherit}
 .reveal.visible{opacity:1;transform:translateY(0)}
 @media(max-width:760px){
  .app{padding:9px 9px 110px}.layout{grid-template-columns:1fr}
- .side{position:static;order:2}.toggles{grid-template-columns:1fr}
+ .side{position:static;order:2}
  .apirow{flex-direction:column}.apirow .btn{width:100%}
  h1{font-size:17px}
  .buildbar{display:block;position:fixed;z-index:20;left:0;right:0;bottom:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line);box-shadow:0 -5px 20px #203c6010}
@@ -100,8 +87,6 @@ button{cursor:pointer;font:inherit}
 
 <div class="layout">
 <main>
-<div class="tabs reveal"><button class="tab active" type="button">🌐 HTML / CSS / JS</button><button class="tab" type="button" onclick="alert('Kotlin/Java mode requires backend support.')">〈〉 Kotlin / Java</button></div>
-
 <section class="card reveal">
  <div class="head"><span class="num">1</span><strong>App Information</strong></div>
  <div class="body">
@@ -118,49 +103,25 @@ button{cursor:pointer;font:inherit}
  <div class="head"><span class="num">2</span><strong>Icon & Branding</strong></div>
  <div class="body">
   <div class="uploadgrid">
-   <label class="upload"><input id="appIcon" type="file" accept="image/png,image/jpeg"><span>▣</span><b>App Icon</b><div class="hint" id="iconName">512×512 PNG</div></label>
-   <label class="upload"><input id="splash" type="file" accept="image/png,image/jpeg"><span>▧</span><b>Splash Screen</b><div class="hint" id="splashName">Splash image</div></label>
+   <label class="upload"><input id="appIcon" type="file" accept="image/png,image/jpeg"><span>▣</span><b>App Icon</b><div class="hint" id="iconName">PNG or JPEG · max 5 MB</div></label>
+   <label class="upload"><input id="splash" type="file" accept="image/png,image/jpeg"><span>▧</span><b>Splash Screen</b><div class="hint" id="splashName">PNG or JPEG · max 5 MB</div></label>
   </div>
   <div class="field" style="margin-top:13px"><label>Splash Background Color</label><div class="colorrow"><input id="barColor" type="color" value="#0F172A"><input id="barHex" value="#0F172A"></div></div>
  </div>
 </section>
 
-<section class="card reveal">
- <div class="head"><span class="num">3</span><strong>Behavior & Permissions</strong></div>
- <div class="body">
-  <div class="section">App Behavior</div><div class="toggles" id="behavior"></div>
-  <div class="section" style="margin-top:14px">Interaction</div><div class="toggles" id="interaction"></div>
-  <div class="section" style="margin-top:14px">Permissions</div><div class="toggles" id="permissions"></div>
-  <div class="section" style="margin-top:14px">Appearance</div><div class="toggles" id="appearance"></div>
- </div>
-</section>
-
-<section class="card accordion reveal" id="proAccordion">
- <button class="head" type="button" style="width:100%;text-align:left;border:0" onclick="toggleAccordion('proAccordion')"><span class="num">4</span><strong>Pro Features</strong><span class="chevron">⌄</span></button>
- <div class="accordion-content"><div class="accordion-inner"><div class="body pro" id="proFeatures"></div></div></div>
-</section>
-
-<section class="card reveal">
- <div class="head"><span class="num">5</span><strong>Share & Rate</strong></div>
- <div class="body">
-  <div class="field"><label>Share Message</label><input id="shareMessage" placeholder="Check out this app!"></div>
-  <div class="field" style="margin-top:12px"><label>Share Link (Optional)</label><input id="shareLink" type="url" placeholder="https://example.com/app"></div>
- </div>
-</section>
-
-<section class="card accordion reveal" id="advancedAccordion">
- <button class="head" type="button" style="width:100%;text-align:left;border:0" onclick="toggleAccordion('advancedAccordion')"><span class="num">6</span><strong>Advanced Developer</strong><span class="chevron">⌄</span></button>
+<section class="card accordion" id="advancedAccordion" hidden>
+ <button class="head" type="button" style="width:100%;text-align:left;border:0" onclick="toggleAccordion('advancedAccordion')"><span class="num">3</span><strong>Custom CSS & JavaScript</strong><span class="chevron">⌄</span></button>
  <div class="accordion-content"><div class="accordion-inner"><div class="body">
+  <p class="hint" style="margin-top:0">These fields are applied only when <b>HTML Code</b> is selected above.</p>
   <div class="field"><label>Custom CSS</label><textarea id="customCss" placeholder="body { font-size: 14px; }"></textarea></div>
   <div class="field" style="margin-top:12px"><label>Custom JavaScript</label><textarea id="customJs" placeholder="console.log('App loaded');"></textarea></div>
-  <div class="field" style="margin-top:12px"><label>Refresh Webhook URL</label><input id="crashWebhook" type="url" placeholder="https://yourserver.com/refresh"></div>
-  <div class="field" style="margin-top:12px"><label>Build Complete Webhook URL</label><input id="buildWebhook" type="url" placeholder="https://yourserver.com/build-complete"></div>
  </div></div></div>
 </section>
 </main>
 
 <aside class="side reveal">
- <section class="card preview"><div class="appicon">▯</div><div class="pvname" id="previewName">My App</div><div class="pvpackage" id="previewPkg">com.example.app</div><div class="meta"><div><b id="pvVersion">1.0</b>Version</div><div><b>Android 5+</b>Min SDK</div><div><b>~20 MB</b>Size</div></div><div class="deep">🔗 Deeplink: <span id="previewDeep">com.example.app://</span></div></section>
+ <section class="card preview"><div class="appicon">▯</div><div class="pvname" id="previewName">My App</div><div class="pvpackage" id="previewPkg">com.example.app</div><div class="meta"><div><b id="pvVersion">1.0</b>Version</div><div><b>Android 7+</b>Minimum Android</div></div></section>
  <button class="build" type="button" onclick="buildApk()">⚡ BUILD APK</button>
  <button class="export" id="exportBtn" type="button">Export Configuration JSON</button>
  <div id="result" class="result"></div>
@@ -173,22 +134,13 @@ button{cursor:pointer;font:inherit}
 <div class="buildbar"><button class="build" type="button" onclick="buildApk()">⚡ BUILD APK</button></div>
 
 <script>
-const state={source:"web",toggles:{}};
-const groups={
-behavior:[["hide_title_bar","Hide Title Bar","Hides the toolbar",true],["loading_spinner","Loading Spinner","Page loading indicator",false],["fullscreen","Full Screen","Hides the status bar",false],["exit_confirmation","Exit Confirmation","Confirm before exiting",true]],
-interaction:[["pull_to_refresh","Pull to Refresh","Swipe down to refresh",false],["pinch_zoom","Pinch to Zoom","Allow pinch zoom",false],["media_autoplay","Media Autoplay","Auto-play website media",false],["pc_mode","PC Mode","Desktop website mode",false],["long_press_menu","Long Press Menu","Enable context menu",false]],
-permissions:[["camera_access","Camera Access","Allow camera permission",false],["microphone_access","Microphone Access","Allow microphone permission",false]],
-appearance:[["dark_mode_support","Dark Mode Support","Website dark appearance",false]]
-};
-const pro=[["aes256_encryption","AES-256 Encryption","Requires backend implementation"],["fcm_push_notifications","FCM Push Notifications","Requires Firebase setup"],["admob_ads","AdMob Banner + Interstitial","Requires AdMob integration"]];
-function addToggle(item,root){const[id,title,desc,initial]=item;state.toggles[id]=initial;const el=document.createElement("div");el.className="toggle"+(initial?" on":"");el.innerHTML='<div><div class="tt"></div><div class="desc"></div></div><span class="switch"></span>';el.querySelector(".tt").textContent=title;el.querySelector(".desc").textContent=desc;el.onclick=()=>{state.toggles[id]=!state.toggles[id];el.classList.toggle("on",state.toggles[id])};root.appendChild(el)}
-Object.entries(groups).forEach(([key,items])=>items.forEach(item=>addToggle(item,document.getElementById(key))));pro.forEach(item=>addToggle(item,document.getElementById("proFeatures")));
+const state={source:"web"};
 function toggleAccordion(id){document.getElementById(id).classList.toggle("open")}
-function setSource(source){state.source=source;document.getElementById("webBtn").classList.toggle("active",source==="web");document.getElementById("htmlBtn").classList.toggle("active",source==="html");document.getElementById("webSource").style.display=source==="web"?"block":"none";document.getElementById("htmlSource").style.display=source==="html"?"block":"none"}
-function updatePreview(){const n=document.getElementById("appName").value||"My App",p=document.getElementById("packageName").value||"com.example.app";document.getElementById("previewName").textContent=n;document.getElementById("previewPkg").textContent=p;document.getElementById("previewDeep").textContent=p+"://";document.getElementById("pvVersion").textContent=document.getElementById("versionName").value||"1.0"}
+function setSource(source){state.source=source;document.getElementById("webBtn").classList.toggle("active",source==="web");document.getElementById("htmlBtn").classList.toggle("active",source==="html");document.getElementById("webSource").style.display=source==="web"?"block":"none";document.getElementById("htmlSource").style.display=source==="html"?"block":"none";const advanced=document.getElementById("advancedAccordion");advanced.hidden=source!=="html";if(source!=="html")advanced.classList.remove("open")}
+function updatePreview(){const n=document.getElementById("appName").value||"My App",p=document.getElementById("packageName").value||"com.example.app";document.getElementById("previewName").textContent=n;document.getElementById("previewPkg").textContent=p;document.getElementById("pvVersion").textContent=document.getElementById("versionName").value||"1.0"}
 ["appName","packageName","versionName"].forEach(id=>document.getElementById(id).addEventListener("input",updatePreview));
-document.getElementById("appIcon").addEventListener("change",e=>document.getElementById("iconName").textContent=e.target.files[0]?.name||"512×512 PNG");
-document.getElementById("splash").addEventListener("change",e=>document.getElementById("splashName").textContent=e.target.files[0]?.name||"Splash image");
+document.getElementById("appIcon").addEventListener("change",e=>document.getElementById("iconName").textContent=e.target.files[0]?.name||"PNG or JPEG · max 5 MB");
+document.getElementById("splash").addEventListener("change",e=>document.getElementById("splashName").textContent=e.target.files[0]?.name||"PNG or JPEG · max 5 MB");
 document.getElementById("barColor").addEventListener("input",e=>document.getElementById("barHex").value=e.target.value);
 document.getElementById("barHex").addEventListener("input",e=>{if(/^#[0-9a-f]{6}$/i.test(e.target.value))document.getElementById("barColor").value=e.target.value});
 
@@ -219,7 +171,7 @@ document.getElementById("saveApi").addEventListener("click",async()=>{
  }catch(error){apiStatus.textContent="Not Connected";apiStatus.className="status";log(error.message||"Could not connect to API.","bad")}
 	 });
 	 document.getElementById("saveApi").click();
-function collectConfig(){return{app_name:document.getElementById("appName").value.trim(),package_name:document.getElementById("packageName").value.trim(),resource_type:state.source,website_url:document.getElementById("websiteUrl").value.trim(),html_code:document.getElementById("htmlCode").value,version_name:document.getElementById("versionName").value.trim(),version_code:document.getElementById("versionCode").value,status_bar_color:document.getElementById("barHex").value,features:state.toggles,share:{message:document.getElementById("shareMessage").value,link:document.getElementById("shareLink").value},advanced:{custom_css:document.getElementById("customCss").value,custom_javascript:document.getElementById("customJs").value,refresh_webhook_url:document.getElementById("crashWebhook").value,build_complete_webhook_url:document.getElementById("buildWebhook").value}}}
+function collectConfig(){const config={app_name:document.getElementById("appName").value.trim(),package_name:document.getElementById("packageName").value.trim(),resource_type:state.source,website_url:document.getElementById("websiteUrl").value.trim(),html_code:document.getElementById("htmlCode").value,version_name:document.getElementById("versionName").value.trim(),version_code:document.getElementById("versionCode").value,status_bar_color:document.getElementById("barHex").value};if(state.source==="html")config.advanced={custom_css:document.getElementById("customCss").value,custom_javascript:document.getElementById("customJs").value};return config}
 document.getElementById("exportBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(collectConfig(),null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="apk-builder-config.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);log("Configuration JSON exported.","good")});
 function setBuildButtons(disabled){document.querySelectorAll(".build").forEach(button=>{button.disabled=disabled;button.style.opacity=disabled?".65":"1"})}
 function showDownloadLink(url){result.textContent="APK build completed. ";const link=document.createElement("a");link.href=url;link.textContent="Download APK";link.rel="noopener";link.style.fontWeight="bold";result.appendChild(link);log("APK is ready. Download link expires in 6 hours.","good")}
