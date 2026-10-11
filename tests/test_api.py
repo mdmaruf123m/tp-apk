@@ -1,3 +1,4 @@
+import asyncio
 import json
 import hashlib
 import hmac
@@ -73,6 +74,15 @@ def test_rejects_invalid_package_name(client):
     response = client.post("/api/build", data=data, files=files, headers={"Authorization": "Bearer test-builder-key"})
     assert response.status_code == 400
     assert "Package name" in response.json()["message"]
+
+
+def test_asset_encryption_is_free_without_subscription():
+    data, _ = html_form()
+    config = json.loads(data["config"])
+    config["pro_features"] = {"asset_encryption": True}
+    config["subscription_active"] = False
+    clean = asyncio.run(main._validate_config(json.dumps(config)))
+    assert clean["pro_features"]["asset_encryption"] is True
 
 
 def test_accepts_first_job_and_returns_poll_url(client, monkeypatch):
