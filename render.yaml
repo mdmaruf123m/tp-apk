@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: tp-apk-builder-api
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn build_api.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /api/health
+    envVars:
+      - key: BUILD_API_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_REPOSITORY
+        value: mdmaruf123m/tp-apk
+      - key: GITHUB_WORKFLOW_FILE
+        value: apk-build.yml
+      - key: INTERNAL_WORKER_TOKEN
+        sync: false
+      - key: DOWNLOAD_SIGNING_KEY
+        sync: false

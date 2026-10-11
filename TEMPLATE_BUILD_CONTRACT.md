@@ -135,9 +135,9 @@ Run from the root of the isolated build workspace directory:
 ### Debug APK Build (Default / Testing)
 ```bash
 gradle assembleDebug --no-daemon
-# Or if using the Gradle wrapper:
-./gradlew assembleDebug --no-daemon
 ```
+
+The repository does not include `gradlew`; the hosted GitHub Actions build workflow installs Gradle 9.3.1 before invoking the build.
 
 ### Release APK Build (With Signing Environment Variables)
 Provide the keystore credentials via environment variables (never hard-code them in files):

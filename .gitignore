@@ -16,3 +16,6 @@
 local.properties
 .env
 debug.keystore
+__pycache__/
+*.py[cod]
+.pytest_cache/

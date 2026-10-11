@@ -27,6 +27,7 @@ class ExampleRobolectricTest {
     assertEquals("WebAPK Template", config.appName)
     assertEquals("web/index.html", config.webEntryAssetPath)
     assertEquals("file:///android_asset/web/index.html", config.webEntryUrl)
+    assertEquals("", config.webStartUrl)
     assertTrue(
       "Expected placeholder assets/web/index.html to exist",
       TemplateAppConfig.verifyEntryAssetExists(context, config.webEntryAssetPath),
