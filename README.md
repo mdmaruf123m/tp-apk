@@ -1,5 +1,7 @@
 # Android WebView APK Template
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/mdmaruf123m/tp-apk/tree/main)
+
 A production-ready, reusable **Android APK Template Project** built with **Kotlin**, **AndroidX**, **Material 3**, and **Android WebView**.
 
 This repository is engineered specifically to be cloned, populated with an HTML5/CSS/JS application, configured, and compiled into a standalone Android APK by an **automated Python/FastAPI backend running headlessly on a Linux server**.
@@ -163,9 +165,9 @@ This repository does **not** bundle the Android SDK or JDK inside git. The Linux
 ### Generate a Debug APK
 ```bash
 gradle assembleDebug
-# Or if using a Gradle wrapper in your deployment container:
-./gradlew assembleDebug
 ```
+
+This repository does not include the Gradle wrapper scripts. The hosted APK workflow installs the pinned Gradle version on its GitHub Actions runner.
 
 You can also pass configuration overrides directly via CLI flags without modifying `gradle.properties`:
 ```bash
@@ -204,3 +206,12 @@ gradle assembleRelease
   ```
 
 For full Python backend integration steps and exact file replacement contracts, see **[`TEMPLATE_BUILD_CONTRACT.md`](./TEMPLATE_BUILD_CONTRACT.md)**.
+
+
+## 8. APK Builder API and Hosted Build Runner
+
+The standalone [`apk-builder.html`](./apk-builder.html) can use the FastAPI service and GitHub Actions workflow added to this repository. Render accepts one request at a time and returns HTTP `409` (`server_busy`) while the first job is queued or running. Accepted requests receive a `job_id`; the page polls status and shows a signed APK download link after the GitHub-hosted runner completes the build.
+
+The Render service hosts the API and frontend only. Android SDK/Gradle builds run in GitHub Actions, so the Render Free API's 512 MB memory limit is not used for compilation. For secrets, setup, limitations and deployment steps, see [`API_DEPLOYMENT.md`](./API_DEPLOYMENT.md).
+
+> The builder API currently supports debug APK builds. A release APK suitable for store distribution needs a separately configured signing workflow.

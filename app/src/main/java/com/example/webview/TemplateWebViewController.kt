@@ -101,8 +101,10 @@ object TemplateWebViewController {
         allowUniversalAccessFromFileURLs = false
       }
 
-      // Attach read-only metadata bridge
-      addJavascriptInterface(TemplateJsBridge(context.applicationContext, config), JS_BRIDGE_NAME)
+      // Remote websites are third-party origins; do not expose the native JS bridge to them.
+      if (config.webStartUrl.isBlank()) {
+        addJavascriptInterface(TemplateJsBridge(context.applicationContext, config), JS_BRIDGE_NAME)
+      }
 
       webViewClient = createSafeWebViewClient(context.applicationContext, config, callbacks)
       webChromeClient = createWebChromeClient(callbacks)

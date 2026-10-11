@@ -17,6 +17,20 @@ fun getConfigProperty(key: String, defaultValue: String): String {
     ?: System.getenv(key)?.trim()?.takeIf { it.isNotEmpty() }
     ?: defaultValue
 }
+fun javaStringLiteral(value: String): String = buildString {
+  append('"')
+  value.forEach { character ->
+    when (character) {
+      '\\' -> append("\\\\")
+      '"' -> append("\\\"")
+      '\n' -> append("\\n")
+      '\r' -> append("\\r")
+      '\t' -> append("\\t")
+      else -> append(character)
+    }
+  }
+  append('"')
+}
 
 val configAppName = getConfigProperty("APP_NAME", "WebAPK Template")
 val configPackageName = getConfigProperty("PACKAGE_NAME", "com.aistudio.webapktemplate.k9x4qm")
@@ -27,6 +41,7 @@ val configTargetSdk = getConfigProperty("TARGET_SDK", "36").toIntOrNull() ?: 36
 val configOrientation = getConfigProperty("ORIENTATION", "unspecified")
 val configAppTheme = getConfigProperty("APPLICATION_THEME", "Theme.AppTemplate")
 val configWebEntryPath = getConfigProperty("WEB_ENTRY_PATH", "web/index.html")
+val configWebStartUrl = getConfigProperty("WEB_START_URL", "")
 val configAllowExternalNetwork = getConfigProperty("ALLOW_EXTERNAL_NETWORK", "true").toBoolean()
 val configEnableWebViewDebug = getConfigProperty("ENABLE_WEBVIEW_DEBUG", "false").toBoolean()
 val configSplashBgColor = getConfigProperty("SPLASH_BG_COLOR", "#0F172A")
@@ -53,10 +68,11 @@ android {
     resValue("color", "splash_background", configSplashBgColor)
 
     // Expose template configuration to Kotlin runtime via BuildConfig
-    buildConfigField("String", "APP_NAME", "\"${configAppName.replace("\"", "\\\"")}\"")
-    buildConfigField("String", "WEB_ENTRY_PATH", "\"${configWebEntryPath.replace("\"", "\\\"")}\"")
-    buildConfigField("String", "CONFIGURED_ORIENTATION", "\"${configOrientation.replace("\"", "\\\"")}\"")
-    buildConfigField("String", "CONFIGURED_THEME", "\"${configAppTheme.replace("\"", "\\\"")}\"")
+    buildConfigField("String", "APP_NAME", javaStringLiteral(configAppName))
+    buildConfigField("String", "WEB_ENTRY_PATH", javaStringLiteral(configWebEntryPath))
+    buildConfigField("String", "WEB_START_URL", javaStringLiteral(configWebStartUrl))
+    buildConfigField("String", "CONFIGURED_ORIENTATION", javaStringLiteral(configOrientation))
+    buildConfigField("String", "CONFIGURED_THEME", javaStringLiteral(configAppTheme))
     buildConfigField("boolean", "ALLOW_EXTERNAL_NETWORK", configAllowExternalNetwork.toString())
     buildConfigField("boolean", "ENABLE_WEBVIEW_DEBUG", configEnableWebViewDebug.toString())
   }

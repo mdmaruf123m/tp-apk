@@ -93,8 +93,9 @@ button{cursor:pointer;font:inherit}
 
 <section class="api reveal">
  <div class="apihead"><strong>🔌 API Connection</strong><span id="apiStatus" class="status">Not Connected</span></div>
- <div class="apirow"><input id="apiUrl" type="url" placeholder="https://your-api.com/build"><button class="btn" id="saveApi">Save API</button></div>
- <div class="foot">Paste your backend API URL and save it before building.</div>
+ <div class="apirow"><input id="apiUrl" type="url" placeholder="https://your-service.onrender.com"><input id="apiKey" type="password" autocomplete="off" placeholder="Builder API key"><button class="btn" id="saveApi">Save API</button></div>
+ <a class="btn" href="https://render.com/deploy?repo=https://github.com/mdmaruf123m/tp-apk/tree/main" target="_blank" rel="noopener" style="display:inline-block;margin-top:9px;text-decoration:none">Connect Render &amp; Deploy API</a>
+ <div class="foot">Save the Render service URL and its API key. Builds run one at a time; while one is running, other requests receive “Server busy”.</div>
 </section>
 
 <div class="layout">
@@ -120,7 +121,7 @@ button{cursor:pointer;font:inherit}
    <label class="upload"><input id="appIcon" type="file" accept="image/png,image/jpeg"><span>▣</span><b>App Icon</b><div class="hint" id="iconName">512×512 PNG</div></label>
    <label class="upload"><input id="splash" type="file" accept="image/png,image/jpeg"><span>▧</span><b>Splash Screen</b><div class="hint" id="splashName">Splash image</div></label>
   </div>
-  <div class="field" style="margin-top:13px"><label>Status Bar Color</label><div class="colorrow"><input id="barColor" type="color" value="#2563eb"><input id="barHex" value="#2563eb"></div></div>
+  <div class="field" style="margin-top:13px"><label>Splash Background Color</label><div class="colorrow"><input id="barColor" type="color" value="#0F172A"><input id="barHex" value="#0F172A"></div></div>
  </div>
 </section>
 
@@ -164,7 +165,7 @@ button{cursor:pointer;font:inherit}
  <button class="export" id="exportBtn" type="button">Export Configuration JSON</button>
  <div id="result" class="result"></div>
  <section class="terminal"><div class="termhead"><span class="dot"></span> BUILD TERMINAL <span style="margin-left:auto;color:#8296b4;font-weight:normal" id="termStatus">Ready</span></div><div id="terminalOutput"><span class="termline">[system] Ready. Configure your API to start a build.</span></div></section>
- <div class="foot">Live build logs appear here only if your backend streams or returns logs. The backend performs the actual APK build.</div>
+ <div class="foot">The page polls the job status. The Android APK is built by GitHub Actions; full logs are available from the build run link if a job fails.</div>
 </aside>
 </div>
 </div>
@@ -191,47 +192,56 @@ document.getElementById("splash").addEventListener("change",e=>document.getEleme
 document.getElementById("barColor").addEventListener("input",e=>document.getElementById("barHex").value=e.target.value);
 document.getElementById("barHex").addEventListener("input",e=>{if(/^#[0-9a-f]{6}$/i.test(e.target.value))document.getElementById("barColor").value=e.target.value});
 
-const apiInput=document.getElementById("apiUrl"),apiStatus=document.getElementById("apiStatus");
+const apiInput=document.getElementById("apiUrl"),apiKeyInput=document.getElementById("apiKey"),apiStatus=document.getElementById("apiStatus");
 apiInput.value=localStorage.getItem("apk_builder_api_url")||"";
-function refreshApiStatus(){const saved=!!localStorage.getItem("apk_builder_api_url");apiStatus.textContent=saved?"API Saved":"Not Connected";apiStatus.className="status"+(saved?" ok":"")}
-refreshApiStatus();
-document.getElementById("saveApi").addEventListener("click",()=>{const value=apiInput.value.trim();try{new URL(value);localStorage.setItem("apk_builder_api_url",value);refreshApiStatus();log("API URL saved on this device.","good")}catch(e){apiStatus.textContent="Invalid URL";apiStatus.className="status";log("Please enter a valid API URL.","bad")}});
-
-const terminal=document.getElementById("terminalOutput"),termStatus=document.getElementById("termStatus");
+apiKeyInput.value=localStorage.getItem("apk_builder_api_key")||"";
+const terminal=document.getElementById("terminalOutput"),termStatus=document.getElementById("termStatus"),result=document.getElementById("result");
+let polling=false;
 function log(message,type=""){const line=document.createElement("div");line.className="termline "+type;line.textContent="["+new Date().toLocaleTimeString()+"] "+message;terminal.appendChild(line);terminal.scrollTop=terminal.scrollHeight}
+function apiBase(){return(localStorage.getItem("apk_builder_api_url")||apiInput.value.trim()).replace(/\/+$/ ,"")}
+function authHeaders(){return{"Authorization":"Bearer "+(localStorage.getItem("apk_builder_api_key")||apiKeyInput.value.trim())}}
+function refreshApiStatus(){const saved=!!localStorage.getItem("apk_builder_api_url")&&!!localStorage.getItem("apk_builder_api_key");apiStatus.textContent=saved?"Configured":"Not Connected";apiStatus.className="status"+(saved?" ok":"")}
+refreshApiStatus();
+async function readApiError(response){const data=await response.json().catch(()=>({}));return data.message||data.detail?.message||data.detail||("HTTP "+response.status)}
+document.getElementById("saveApi").addEventListener("click",async()=>{
+ const value=apiInput.value.trim(),key=apiKeyInput.value.trim();
+ try{
+  const parsed=new URL(value);if(!["https:","http:"].includes(parsed.protocol))throw new Error("Use an HTTPS Render URL.");
+  if(!key)throw new Error("Enter the builder API key.");
+  let path=parsed.pathname.replace(/\/+$/ ,"");if(path.endsWith("/api/build"))path=path.slice(0,-9);const base=parsed.origin+path;
+  const response=await fetch(base+"/api/auth/check",{headers:{"Authorization":"Bearer "+key}});
+  if(!response.ok)throw new Error(await readApiError(response));
+  localStorage.setItem("apk_builder_api_url",base);localStorage.setItem("apk_builder_api_key",key);refreshApiStatus();log("API connection verified.","good");resumeSavedJob();
+ }catch(error){apiStatus.textContent="Not Connected";apiStatus.className="status";log(error.message||"Could not connect to API.","bad")}
+});
 function collectConfig(){return{app_name:document.getElementById("appName").value.trim(),package_name:document.getElementById("packageName").value.trim(),resource_type:state.source,website_url:document.getElementById("websiteUrl").value.trim(),html_code:document.getElementById("htmlCode").value,version_name:document.getElementById("versionName").value.trim(),version_code:document.getElementById("versionCode").value,status_bar_color:document.getElementById("barHex").value,features:state.toggles,share:{message:document.getElementById("shareMessage").value,link:document.getElementById("shareLink").value},advanced:{custom_css:document.getElementById("customCss").value,custom_javascript:document.getElementById("customJs").value,refresh_webhook_url:document.getElementById("crashWebhook").value,build_complete_webhook_url:document.getElementById("buildWebhook").value}}}
 document.getElementById("exportBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(collectConfig(),null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="apk-builder-config.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);log("Configuration JSON exported.","good")});
-
-async function buildApk(){
- const result=document.getElementById("result");result.className="result show";result.textContent="";
- const api=localStorage.getItem("apk_builder_api_url")||apiInput.value.trim(),cfg=collectConfig();
- if(!api){result.classList.add("err");result.textContent="Save your API URL first.";log("Build stopped: API URL not configured.","bad");return}
- if(!cfg.app_name||!cfg.package_name){result.classList.add("err");result.textContent="App Name and Package Name are required.";log("Build stopped: missing app details.","bad");return}
- if(state.source==="web"&&!cfg.website_url){result.classList.add("err");result.textContent="Please enter a Website URL.";log("Build stopped: missing website URL.","bad");return}
- if(state.source==="html"&&!cfg.html_code.trim()){result.classList.add("err");result.textContent="Please paste your HTML code.";log("Build stopped: HTML code is empty.","bad");return}
- const form=new FormData();form.append("config",JSON.stringify(cfg));
- const icon=document.getElementById("appIcon").files[0],splash=document.getElementById("splash").files[0];
- if(icon)form.append("app_icon",icon);if(splash)form.append("splash_image",splash);
- if(state.source==="html")form.append("html_file",new Blob([cfg.html_code],{type:"text/html"}),"index.html");
- result.textContent="Build request sent. Check terminal for updates.";termStatus.textContent="Running";terminal.innerHTML="";log("Preparing build request…");log("Connecting to build API…");
- try{
-  const response=await fetch(api,{method:"POST",body:form});
-  log("Server responded with HTTP "+response.status,response.ok?"good":"bad");
-  const contentType=response.headers.get("content-type")||"";
-  if(!response.ok){const message=contentType.includes("application/json")?(await response.json().catch(()=>({}))).message:"HTTP "+response.status;throw new Error(response.status===409?"Build server is busy. Try again later.":(message||"Build request failed."))}
-  if(response.body&&response.headers.get("content-type")?.includes("text/event-stream")){
-   const reader=response.body.getReader(),decoder=new TextDecoder();let buffer="";
-   while(true){const{value,done}=await reader.read();if(done)break;buffer+=decoder.decode(value,{stream:true});const parts=buffer.split("\n");buffer=parts.pop();for(const part of parts){const line=part.replace(/^data:\s?/,"").trim();if(!line||line.startsWith(":"))continue;try{const event=JSON.parse(line);if(event.message)log(event.message,event.error?"bad":event.done?"good":"");if(event.download_url){const a=document.createElement("a");a.href=event.download_url;a.target="_blank";a.rel="noopener";a.textContent="Download APK";result.appendChild(document.createElement("br"));result.appendChild(a)}if(event.done)termStatus.textContent="Complete"}catch(e){log(line)}}}
-   result.textContent="Build stream finished. See terminal for logs.";termStatus.textContent="Complete";log("Stream closed.","good");return;
-  }
-  const data=contentType.includes("application/json")?await response.json():{message:await response.text()};
-  if(Array.isArray(data.logs))data.logs.forEach(item=>log(typeof item==="string"?item:JSON.stringify(item)));
-  if(data.message)log(data.message,"good");
-  result.textContent=data.message||"Build request completed.";
-  if(data.download_url){const a=document.createElement("a");a.href=data.download_url;a.target="_blank";a.rel="noopener";a.textContent="Download APK";result.appendChild(document.createElement("br"));result.appendChild(a);log("APK download link received.","good")}
-  termStatus.textContent="Complete";
- }catch(error){result.classList.add("err");result.textContent=error.message||"Could not connect to the API.";log(error.message||"Network error.","bad");termStatus.textContent="Error"}
+function setBuildButtons(disabled){document.querySelectorAll(".build").forEach(button=>{button.disabled=disabled;button.style.opacity=disabled?".65":"1"})}
+function showDownloadLink(url){result.textContent="APK build completed. ";const link=document.createElement("a");link.href=url;link.textContent="Download APK";link.rel="noopener";link.style.fontWeight="bold";result.appendChild(link);log("APK is ready. Download link expires in 6 hours.","good")}
+async function pollJob(jobId,statusUrl){if(polling)return;polling=true;setBuildButtons(true);termStatus.textContent="Running";localStorage.setItem("apk_builder_active_job",JSON.stringify({job_id:jobId,status_url:statusUrl}));log("Tracking job "+jobId+".");let lastMessage="";
+ try{while(true){await new Promise(resolve=>setTimeout(resolve,4000));const response=await fetch(statusUrl,{headers:authHeaders(),cache:"no-store"});if(!response.ok)throw new Error(await readApiError(response));const data=await response.json();
+  if(data.status==="complete"){termStatus.textContent="Complete";result.className="result show";showDownloadLink(data.download_url);localStorage.removeItem("apk_builder_active_job");break}
+  if(data.status==="failed"){termStatus.textContent="Failed";result.className="result show err";result.textContent=data.message||"APK build failed.";if(data.run_url){const link=document.createElement("a");link.href=data.run_url;link.target="_blank";link.rel="noopener";link.textContent="View build logs";result.appendChild(document.createElement("br"));result.appendChild(link)}log(data.message||"Build failed.","bad");localStorage.removeItem("apk_builder_active_job");break}
+  termStatus.textContent=data.status==="running"?"Building":"Waiting";if(data.message&&data.message!==lastMessage){log(data.message);lastMessage=data.message}
+ }}catch(error){termStatus.textContent="Connection lost";result.className="result show err";result.textContent=(error.message||"Could not check the build status.")+" Reopen the page or press Build after the current job finishes.";log(error.message||"Polling failed.","bad")}
+ finally{polling=false;setBuildButtons(false)}
 }
+function resumeSavedJob(){const saved=localStorage.getItem("apk_builder_active_job");if(!saved)return;try{const job=JSON.parse(saved);if(job.job_id&&job.status_url)pollJob(job.job_id,job.status_url)}catch(e){localStorage.removeItem("apk_builder_active_job")}}
+async function buildApk(){
+ result.className="result show";result.textContent="";const cfg=collectConfig(),base=apiBase(),key=localStorage.getItem("apk_builder_api_key")||apiKeyInput.value.trim();
+ if(!base||!key){result.classList.add("err");result.textContent="Save the API URL and API key first.";log("Build stopped: API is not configured.","bad");return}
+ if(!cfg.app_name||!cfg.package_name){result.classList.add("err");result.textContent="App Name and Package Name are required.";return}
+ if(state.source==="web"&&!cfg.website_url){result.classList.add("err");result.textContent="Please enter a Website URL.";return}
+ if(state.source==="html"&&!cfg.html_code.trim()){result.classList.add("err");result.textContent="Please paste your HTML code.";return}
+ const form=new FormData();form.append("config",JSON.stringify(cfg));const icon=document.getElementById("appIcon").files[0],splash=document.getElementById("splash").files[0];
+ if(icon)form.append("app_icon",icon);if(splash)form.append("splash_image",splash);if(state.source==="html")form.append("html_file",new Blob([cfg.html_code],{type:"text/html"}),"index.html");
+ terminal.innerHTML="";log("Sending build request to Render API…");
+ setBuildButtons(true);
+ try{const response=await fetch(base+"/api/build",{method:"POST",headers:authHeaders(),body:form});if(!response.ok){const message=await readApiError(response);if(response.status===409){result.textContent="Server busy: another APK is being built. Try again after it completes.";log("Request rejected: server busy.","bad")}else{result.textContent=message;log(message,"bad")}result.classList.add("err");termStatus.textContent="Ready";setBuildButtons(false);return}
+  const data=await response.json();result.textContent="Request accepted. Job ID: "+data.job_id;log("Accepted job "+data.job_id+".","good");await pollJob(data.job_id,data.status_url);
+ }catch(error){result.classList.add("err");result.textContent=error.message||"Could not connect to the build API.";log(error.message||"Network error.","bad");termStatus.textContent="Error";setBuildButtons(false)}
+}
+resumeSavedJob();
 const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add("visible");observer.unobserve(entry.target)}}),{threshold:.08});
 document.querySelectorAll(".reveal").forEach(el=>observer.observe(el));
 updatePreview();

@@ -316,7 +316,7 @@ fun WebApkTemplateHost(
                 if (savedStateBundle != null && !savedStateBundle.isEmpty) {
                   webView.restoreState(savedStateBundle)
                 } else {
-                  webView.loadUrl(config.webEntryUrl)
+                  webView.loadUrl(config.webStartUrl.ifBlank { config.webEntryUrl })
                 }
               }
             },
@@ -351,7 +351,7 @@ fun WebApkTemplateHost(
               TemplateAppConfig.verifyEntryAssetExists(context, config.webEntryAssetPath)
             if (assetNowExists) {
               containerState = WebContainerState.Ready
-              activeWebView?.loadUrl(config.webEntryUrl)
+              activeWebView?.loadUrl(config.webStartUrl.ifBlank { config.webEntryUrl })
             }
           },
         )
