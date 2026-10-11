@@ -73,5 +73,8 @@ jobs:
         with:
           gradle-version: '9.3.1'
 
+      - name: Create ephemeral debug signing keystore
+        run: keytool -genkeypair -v -keystore debug.keystore -storetype JKS -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=Android Debug,O=Android,C=US' -noprompt
+
       - name: Compile template APK
         run: gradle assembleDebug --no-daemon --max-workers=2

@@ -12,6 +12,24 @@ def png_bytes(size=(256, 180), color=(30, 100, 220, 255)):
     return stream.getvalue()
 
 
+def test_ensure_debug_keystore_generates_only_when_missing(tmp_path, monkeypatch):
+    monkeypatch.setattr(build_apk, "ROOT", tmp_path)
+    calls = []
+
+    def fake_keytool(command, cwd, check):
+        calls.append(command)
+        keystore = tmp_path / command[command.index("-keystore") + 1]
+        keystore.write_bytes(b"test-keystore")
+
+    monkeypatch.setattr(build_apk.subprocess, "run", fake_keytool)
+    build_apk.ensure_debug_keystore()
+    build_apk.ensure_debug_keystore()
+
+    assert (tmp_path / "debug.keystore").read_bytes() == b"test-keystore"
+    assert len(calls) == 1
+    assert calls[0][calls[0].index("-alias") + 1] == "androiddebugkey"
+
+
 def test_apply_icon_creates_adaptive_and_density_icons(tmp_path, monkeypatch):
     monkeypatch.setattr(build_apk, "ROOT", tmp_path)
     (tmp_path / "app/src/main/res/drawable").mkdir(parents=True)

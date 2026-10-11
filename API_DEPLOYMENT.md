@@ -10,7 +10,7 @@ The API accepts one build at a time. It triggers `.github/workflows/apk-build.ym
 
 ## 2. Deploy the Render Blueprint
 
-1. In Render, choose **New → Blueprint** and select this repository. Render reads `render.yaml` and creates the `tp-apk-builder-api` Python web service.
+1. Click the **Deploy to Render** button at the top of the repository README (or in the builder's API Connection panel). It opens Render's Blueprint flow for this GitHub repository/feature branch; connect your Render account/repository if prompted, review the service, and deploy it. Render reads `render.yaml` and creates the `tp-apk-builder-api` Python web service.
 2. Use the Free plan for the API only. It does not run Gradle; GitHub Actions does the Android build.
 3. Set these environment variables in the Render service:
    - `BUILD_API_KEY`: a long random key that authorized builder users will enter in the page.
@@ -41,5 +41,6 @@ Open the Render service URL. On `apk-builder.html`, enter the Render service bas
 - The API stores the submitted source/assets in memory until the Actions runner fetches them. A Render restart in that short interval can cause that build to fail; the frontend should submit it again after the failure.
 - The shared `BUILD_API_KEY` is access control, not per-user identity. The builder saves it in that browser's local storage; anyone who has the key can submit builds. Use it only on a trusted device, do not publish the key in HTML, and rotate it if exposed. For an open public builder, add actual sign-in or CAPTCHA/rate-limit controls before sharing it broadly.
 - The workflow currently builds **debug APKs**. Those APKs are installable for testing but are not a signed release for Play Store publishing.
+- Each hosted build creates a temporary debug keystore because the repository intentionally ignores `debug.keystore`. A later APK build is signed with a different temporary key, so Android may require uninstalling the earlier copy before installing a rebuilt APK. Use a securely stored persistent signing key before distributing updateable/release APKs.
 - Website mode opens the supplied **HTTPS URL** in the APK's WebView; that app needs internet access and the website is not bundled for offline use. HTML mode packages the pasted single HTML document and optional custom CSS/JavaScript. It does not yet accept a multi-file website ZIP.
 - App name, package name, version, website/HTML source, uploaded PNG/JPEG icon, splash image and splash background color are applied. The other behavior/permission toggles and refresh/build-complete webhook fields currently travel in the request but are not implemented by this Android template; do not treat them as active controls yet.

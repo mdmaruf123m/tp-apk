@@ -23,6 +23,25 @@ def log(message: str) -> None:
     print(message, flush=True)
 
 
+def ensure_debug_keystore() -> None:
+    keystore = ROOT / "debug.keystore"
+    if keystore.is_file():
+        return
+    log("Generating an ephemeral debug signing keystore.")
+    subprocess.run(
+        [
+            "keytool", "-genkeypair", "-v", "-keystore", str(keystore), "-storetype", "JKS",
+            "-storepass", "android", "-keypass", "android", "-alias", "androiddebugkey",
+            "-keyalg", "RSA", "-keysize", "2048", "-validity", "10000",
+            "-dname", "CN=Android Debug,O=Android,C=US", "-noprompt",
+        ],
+        cwd=ROOT,
+        check=True,
+    )
+    if not keystore.is_file():
+        raise RuntimeError("Could not create the debug signing keystore.")
+
+
 def fetch_payload(job_id: str) -> dict:
     api_url = os.environ.get("BUILD_API_URL", "").strip().rstrip("/")
     token = os.environ.get("INTERNAL_WORKER_TOKEN", "").strip()
@@ -189,6 +208,7 @@ def main() -> int:
     payload = fetch_payload(job_id)
     command = apply_config(payload)
     log("Validated request and prepared Android project assets.")
+    ensure_debug_keystore()
     log("Starting Gradle assembleDebug.")
     subprocess.run(command, cwd=ROOT, check=True)
     apk = ROOT / "app/build/outputs/apk/debug/app-debug.apk"
