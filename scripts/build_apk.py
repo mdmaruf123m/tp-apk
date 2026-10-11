@@ -94,6 +94,8 @@ def ensure_release_keystore(payload: dict) -> tuple[Path, str, str, str]:
         subprocess.run(["git", "-C", str(repo_dir), "add", str(keystore.relative_to(repo_dir))], check=True)
         staged = subprocess.run(["git", "-C", str(repo_dir), "diff", "--cached", "--quiet"], check=False)
         if staged.returncode == 1:
+            subprocess.run(["git", "-C", str(repo_dir), "config", "user.name", "Devlova APK Builder"], check=True)
+            subprocess.run(["git", "-C", str(repo_dir), "config", "user.email", "actions@devlova.app"], check=True)
             subprocess.run(["git", "-C", str(repo_dir), "commit", "-m", f"Add release keystore for {user_part}/{project_part}"], check=True)
             subprocess.run(["git", "-C", str(repo_dir), "push", "origin", "main"], check=True)
         elif staged.returncode != 0:
