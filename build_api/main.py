@@ -365,6 +365,9 @@ async def job_status(job_id: str, request: Request) -> dict[str, Any]:
     elif conclusion == "success":
         normalized = "complete"
         message = "APK build completed."
+    elif conclusion == "cancelled" or state == "cancelled":
+        normalized = "cancelled"
+        message = "APK build was cancelled."
     else:
         normalized = "failed"
         message = f"APK build ended: {conclusion or state or 'unknown error'}."
@@ -378,9 +381,28 @@ async def job_status(job_id: str, request: Request) -> dict[str, Any]:
     if normalized == "complete":
         result["download_url"] = _signed_download(job_id, str(request.base_url))
         result["download_expires_in_seconds"] = DOWNLOAD_TTL_SECONDS
-    if normalized in {"complete", "failed"} and active_job_id == job_id:
+    if normalized in {"complete", "failed", "cancelled"} and active_job_id == job_id:
         active_job_id = None
     return result
+
+
+@app.post("/api/jobs/{job_id}/cancel", dependencies=[Depends(_api_key_auth)])
+async def cancel_build(job_id: str) -> dict[str, Any]:
+    """Cancel the matching GitHub Actions run so the Android runner stops too."""
+    global active_job_id
+    run = await _find_run(job_id)
+    if run is None:
+        if job_id not in jobs:
+            raise HTTPException(status_code=404, detail="Build job was not found.")
+        if active_job_id == job_id:
+            active_job_id = None
+        return {"job_id": job_id, "status": "cancelled", "message": "Queued build cancelled."}
+    if run.get("status") in {"completed", "cancelled"}:
+        return {"job_id": job_id, "status": "cancelled" if run.get("conclusion") == "cancelled" else "finished", "message": "Build is no longer running."}
+    await _github_request("POST", _repo_path(f"actions/runs/{run['id']}/cancel"))
+    if active_job_id == job_id:
+        active_job_id = None
+    return {"job_id": job_id, "status": "cancelling", "message": "Cancellation sent to GitHub Actions."}
 
 
 @app.get("/api/jobs/{job_id}/download")
