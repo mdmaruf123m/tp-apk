@@ -95,7 +95,7 @@ button{cursor:pointer;font:inherit}
  <div class="apihead"><strong>🔌 API Connection</strong><span id="apiStatus" class="status">Not Connected</span></div>
  <div class="apirow"><input id="apiUrl" type="url" placeholder="https://your-service.onrender.com"><input id="apiKey" type="password" autocomplete="off" placeholder="Builder API key"><button class="btn" id="saveApi">Save API</button></div>
  <a class="btn" href="https://render.com/deploy?repo=https://github.com/mdmaruf123m/tp-apk/tree/main" target="_blank" rel="noopener" style="display:inline-block;margin-top:9px;text-decoration:none">Connect Render &amp; Deploy API</a>
- <div class="foot">Save the Render service URL and its API key. Builds run one at a time; while one is running, other requests receive “Server busy”.</div>
+ <div class="foot">The shared API key is embedded in this page; anyone with access can submit builds. Builds run one at a time; while one is running, other requests receive “Server busy”.</div>
 </section>
 
 <div class="layout">
@@ -193,8 +193,12 @@ document.getElementById("barColor").addEventListener("input",e=>document.getElem
 document.getElementById("barHex").addEventListener("input",e=>{if(/^#[0-9a-f]{6}$/i.test(e.target.value))document.getElementById("barColor").value=e.target.value});
 
 const apiInput=document.getElementById("apiUrl"),apiKeyInput=document.getElementById("apiKey"),apiStatus=document.getElementById("apiStatus");
-apiInput.value=localStorage.getItem("apk_builder_api_url")||"";
-apiKeyInput.value=localStorage.getItem("apk_builder_api_key")||"";
+const DEFAULT_API_URL="https://tp-apk-builder-api.onrender.com";
+const DEFAULT_API_KEY="LvRCjCa96DvPLxoH5Bkpoa4GkccJhQry";
+apiInput.value=DEFAULT_API_URL;
+apiKeyInput.value=DEFAULT_API_KEY;
+localStorage.setItem("apk_builder_api_url",DEFAULT_API_URL);
+localStorage.setItem("apk_builder_api_key",DEFAULT_API_KEY);
 const terminal=document.getElementById("terminalOutput"),termStatus=document.getElementById("termStatus"),result=document.getElementById("result");
 let polling=false;
 function log(message,type=""){const line=document.createElement("div");line.className="termline "+type;line.textContent="["+new Date().toLocaleTimeString()+"] "+message;terminal.appendChild(line);terminal.scrollTop=terminal.scrollHeight}
@@ -213,7 +217,8 @@ document.getElementById("saveApi").addEventListener("click",async()=>{
   if(!response.ok)throw new Error(await readApiError(response));
   localStorage.setItem("apk_builder_api_url",base);localStorage.setItem("apk_builder_api_key",key);refreshApiStatus();log("API connection verified.","good");resumeSavedJob();
  }catch(error){apiStatus.textContent="Not Connected";apiStatus.className="status";log(error.message||"Could not connect to API.","bad")}
-});
+	 });
+	 document.getElementById("saveApi").click();
 function collectConfig(){return{app_name:document.getElementById("appName").value.trim(),package_name:document.getElementById("packageName").value.trim(),resource_type:state.source,website_url:document.getElementById("websiteUrl").value.trim(),html_code:document.getElementById("htmlCode").value,version_name:document.getElementById("versionName").value.trim(),version_code:document.getElementById("versionCode").value,status_bar_color:document.getElementById("barHex").value,features:state.toggles,share:{message:document.getElementById("shareMessage").value,link:document.getElementById("shareLink").value},advanced:{custom_css:document.getElementById("customCss").value,custom_javascript:document.getElementById("customJs").value,refresh_webhook_url:document.getElementById("crashWebhook").value,build_complete_webhook_url:document.getElementById("buildWebhook").value}}}
 document.getElementById("exportBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(collectConfig(),null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="apk-builder-config.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);log("Configuration JSON exported.","good")});
 function setBuildButtons(disabled){document.querySelectorAll(".build").forEach(button=>{button.disabled=disabled;button.style.opacity=disabled?".65":"1"})}
