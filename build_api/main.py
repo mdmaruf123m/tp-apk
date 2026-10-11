@@ -32,6 +32,7 @@ DOWNLOAD_TTL_SECONDS = 6 * 60 * 60
 REQUIRED_SERVICE_ENV = ("BUILD_API_KEY", "GITHUB_TOKEN", "INTERNAL_WORKER_TOKEN", "DOWNLOAD_SIGNING_KEY")
 PACKAGE_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+$")
 VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+\-]{0,49}$")
+ID_RE = re.compile(r"^[A-Za-z0-9._:-]{1,160}$")
 
 app = FastAPI(title="APK Builder API", version="1.0.0")
 app.add_middleware(
@@ -175,6 +176,17 @@ async def _validate_config(raw: str) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail="App name is required and must be 1–50 printable characters.")
     if not PACKAGE_RE.fullmatch(package_name):
         raise HTTPException(status_code=400, detail="Package name must look like com.example.app.")
+
+    build_variant = str(config.get("build_variant") or "regular").strip().lower()
+    if build_variant not in {"regular", "release"}:
+        raise HTTPException(status_code=400, detail="build_variant must be 'regular' or 'release'.")
+    user_id = str(config.get("user_id") or "").strip()
+    project_id = str(config.get("project_id") or "").strip()
+    if build_variant == "release" and (not ID_RE.fullmatch(user_id) or not ID_RE.fullmatch(project_id)):
+        raise HTTPException(status_code=400, detail="Release builds require valid user_id and project_id.")
+    config["build_variant"] = build_variant
+    config["user_id"] = user_id
+    config["project_id"] = project_id
 
     version_name = str(config.get("version_name") or "1.0.0").strip()
     if not VERSION_RE.fullmatch(version_name):

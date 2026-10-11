@@ -55,17 +55,21 @@ jobs:
         with:
           gradle-version: '9.3.1'
 
-      - name: Prepare project and build debug APK
+      - name: Prepare project and build APK
         env:
           JOB_ID: ${{ inputs.job_id }}
           BUILD_API_URL: ${{ secrets.BUILD_API_URL }}
           INTERNAL_WORKER_TOKEN: ${{ secrets.INTERNAL_WORKER_TOKEN }}
+          KEYSTORE_REPO_DIR: ${{ github.workspace }}/keystore-store
+          KEYSTORE_REPOSITORY: mdmaruf123m/keystore
+          KEYSTORE_REPO_TOKEN: ${{ secrets.KEYSTORE_REPO_TOKEN }}
+          KEYSTORE_MASTER_SECRET: ${{ secrets.KEYSTORE_MASTER_SECRET }}
         run: python scripts/build_apk.py
 
-      - name: Upload APK artifact
+      - name: Upload named APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: apk-${{ inputs.job_id }}
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: dist/*.apk
           if-no-files-found: error
           retention-days: 7

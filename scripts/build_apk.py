@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import base64
+import hashlib
+import hmac
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import urllib.error
@@ -40,6 +43,69 @@ def ensure_debug_keystore() -> None:
     )
     if not keystore.is_file():
         raise RuntimeError("Could not create the debug signing keystore.")
+
+
+def _safe_path_part(value: str, fallback: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", str(value)).strip("._-")
+    return cleaned[:120] or fallback
+
+
+def _release_credentials(user_id: str, project_id: str, master: str) -> tuple[str, str, str]:
+    seed = f"{user_id}:{project_id}".encode("utf-8")
+    store_password = hmac.new(master.encode("utf-8"), b"store:" + seed, hashlib.sha256).hexdigest()
+    key_password = hmac.new(master.encode("utf-8"), b"key:" + seed, hashlib.sha256).hexdigest()
+    return store_password, key_password, "release"
+
+
+def ensure_release_keystore(payload: dict) -> tuple[Path, str, str, str]:
+    config = payload["config"]
+    repo_dir = Path(os.environ.get("KEYSTORE_REPO_DIR", str(ROOT / "keystore-store"))).resolve()
+    if not repo_dir.is_dir():
+        token = os.environ.get("KEYSTORE_REPO_TOKEN", "").strip()
+        repository = os.environ.get("KEYSTORE_REPOSITORY", "mdmaruf123m/keystore").strip()
+        if not token:
+            raise RuntimeError("Release signing requires KEYSTORE_REPO_TOKEN to access private keystore storage.")
+        repo_dir.parent.mkdir(parents=True, exist_ok=True)
+        clone_url = f"https://x-access-token:{token}@github.com/{repository}.git"
+        subprocess.run(["git", "clone", "--depth", "1", clone_url, str(repo_dir)], cwd=ROOT, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    master = os.environ.get("KEYSTORE_MASTER_SECRET", "").strip()
+    user_id = str(config.get("user_id", "")).strip()
+    project_id = str(config.get("project_id", "")).strip()
+    if not repo_dir.is_dir() or not (repo_dir / ".git").is_dir():
+        raise RuntimeError("Release keystore repository checkout is unavailable.")
+    if not master or not user_id or not project_id:
+        raise RuntimeError("Release signing requires KEYSTORE_MASTER_SECRET, user_id and project_id.")
+    user_part = _safe_path_part(user_id, "user")
+    project_part = _safe_path_part(project_id, "project")
+    folder = repo_dir / "keystore" / user_part / project_part
+    folder.mkdir(parents=True, exist_ok=True)
+    keystore = folder / "release.keystore"
+    store_password, key_password, alias = _release_credentials(user_id, project_id, master)
+    if keystore.is_file() and keystore.stat().st_size > 0:
+        log(f"Reusing release keystore for user {user_part}, project {project_part}.")
+    else:
+        log(f"Generating release keystore for user {user_part}, project {project_part}.")
+        subprocess.run([
+            "keytool", "-genkeypair", "-v", "-keystore", str(keystore), "-storetype", "JKS",
+            "-storepass", store_password, "-keypass", key_password, "-alias", alias,
+            "-keyalg", "RSA", "-keysize", "2048", "-validity", "10000",
+            "-dname", f"CN={config['app_name']},OU=Devlova,O=Devlova,C=US", "-noprompt",
+        ], cwd=ROOT, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        subprocess.run(["git", "-C", str(repo_dir), "add", str(keystore.relative_to(repo_dir))], check=True)
+        staged = subprocess.run(["git", "-C", str(repo_dir), "diff", "--cached", "--quiet"], check=False)
+        if staged.returncode == 1:
+            subprocess.run(["git", "-C", str(repo_dir), "commit", "-m", f"Add release keystore for {user_part}/{project_part}"], check=True)
+            subprocess.run(["git", "-C", str(repo_dir), "push", "origin", "main"], check=True)
+        elif staged.returncode != 0:
+            raise RuntimeError("Could not inspect staged keystore changes.")
+    local_copy = ROOT / "release.keystore"
+    shutil.copyfile(keystore, local_copy)
+    return local_copy, store_password, key_password, alias
+
+
+def artifact_filename(app_name: str, variant: str) -> str:
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", app_name).strip("._-") or "devlova_app"
+    return f"{safe[:80]}_{variant}.apk"
 
 
 def fetch_payload(job_id: str) -> dict:
@@ -187,7 +253,7 @@ def apply_config(payload: dict) -> list[str]:
     if website_url and not website_url.startswith("https://"):
         raise RuntimeError("Only HTTPS website URLs are supported.")
     build_args = [
-        "gradle", "assembleDebug", "--no-daemon", "--stacktrace", "--max-workers=2",
+        "gradle", "assembleRelease" if str(config.get("build_variant", "regular")) == "release" else "assembleDebug", "--no-daemon", "--stacktrace", "--max-workers=2",
         f"-PAPP_NAME={config['app_name']}",
         f"-PPACKAGE_NAME={package}",
         f"-PVERSION_NAME={config.get('version_name', '1.0.0')}",
@@ -221,13 +287,25 @@ def main() -> int:
     payload = fetch_payload(job_id)
     command = apply_config(payload)
     log("Validated request and prepared Android project assets.")
-    ensure_debug_keystore()
-    log("Starting Gradle assembleDebug.")
-    subprocess.run(command, cwd=ROOT, check=True)
-    apk = ROOT / "app/build/outputs/apk/debug/app-debug.apk"
+    variant = str(payload["config"].get("build_variant", "regular"))
+    if variant == "release":
+        keystore, store_password, key_password, alias = ensure_release_keystore(payload)
+        os.environ.update({"KEYSTORE_PATH": str(keystore), "STORE_PASSWORD": store_password, "KEY_PASSWORD": key_password, "KEY_ALIAS": alias})
+        log("Starting Gradle assembleRelease with the project keystore.")
+        subprocess.run(command, cwd=ROOT, check=True, env=os.environ.copy())
+        apk = ROOT / "app/build/outputs/apk/release/app-release.apk"
+    else:
+        ensure_debug_keystore()
+        log("Starting Gradle assembleDebug.")
+        subprocess.run(command, cwd=ROOT, check=True, env=os.environ.copy())
+        apk = ROOT / "app/build/outputs/apk/debug/app-debug.apk"
     if not apk.is_file() or apk.stat().st_size == 0:
         raise RuntimeError("Gradle returned without producing the expected APK.")
-    log(f"Build succeeded: {apk.stat().st_size} bytes")
+    dist = ROOT / "dist"
+    dist.mkdir(exist_ok=True)
+    named_apk = dist / artifact_filename(str(payload["config"].get("app_name", "devlova_app")), variant)
+    shutil.copyfile(apk, named_apk)
+    log(f"Build succeeded: {named_apk.name} ({named_apk.stat().st_size} bytes)")
     return 0
 
 
