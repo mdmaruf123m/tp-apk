@@ -21,6 +21,19 @@ data class TemplateAppConfig(
   val allowExternalNetwork: Boolean,
   val enableWebViewDebug: Boolean,
   val deviceSdkInt: Int,
+  val hideTitleBar: Boolean,
+  val loadingSpinner: Boolean,
+  val fullscreen: Boolean,
+  val exitConfirmation: Boolean,
+  val pullToRefresh: Boolean,
+  val pinchZoom: Boolean,
+  val mediaAutoplay: Boolean,
+  val pcMode: Boolean,
+  val longPressMenu: Boolean,
+  val cameraAccess: Boolean,
+  val microphoneAccess: Boolean,
+  val darkMode: Boolean,
+  val codeSecurity: Boolean,
 ) {
   companion object {
     const val ASSET_URL_PREFIX = "file:///android_asset/"
@@ -86,6 +99,19 @@ data class TemplateAppConfig(
         allowExternalNetwork = BuildConfig.ALLOW_EXTERNAL_NETWORK,
         enableWebViewDebug = BuildConfig.ENABLE_WEBVIEW_DEBUG && BuildConfig.DEBUG,
         deviceSdkInt = Build.VERSION.SDK_INT,
+        hideTitleBar = BuildConfig.HIDE_TITLE_BAR,
+        loadingSpinner = BuildConfig.LOADING_SPINNER,
+        fullscreen = BuildConfig.FULLSCREEN,
+        exitConfirmation = BuildConfig.EXIT_CONFIRMATION,
+        pullToRefresh = BuildConfig.PULL_TO_REFRESH,
+        pinchZoom = BuildConfig.PINCH_ZOOM,
+        mediaAutoplay = BuildConfig.MEDIA_AUTOPLAY,
+        pcMode = BuildConfig.PC_MODE,
+        longPressMenu = BuildConfig.LONG_PRESS_MENU,
+        cameraAccess = BuildConfig.CAMERA_ACCESS,
+        microphoneAccess = BuildConfig.MICROPHONE_ACCESS,
+        darkMode = BuildConfig.DARK_MODE,
+        codeSecurity = BuildConfig.CODE_SECURITY,
       )
     }
 

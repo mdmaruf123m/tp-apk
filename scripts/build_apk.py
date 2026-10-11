@@ -197,6 +197,19 @@ def apply_config(payload: dict) -> list[str]:
     color = str(config.get("status_bar_color", "#0F172A"))
     if re.fullmatch(r"#[0-9a-fA-F]{6}", color):
         build_args.append(f"-PSPLASH_BG_COLOR={color}")
+    behavior = config.get("behavior") or {}
+    behavior_keys = {
+        "hide_title_bar": "HIDE_TITLE_BAR", "loading_spinner": "LOADING_SPINNER",
+        "fullscreen": "FULLSCREEN", "exit_confirmation": "EXIT_CONFIRMATION",
+        "pull_to_refresh": "PULL_TO_REFRESH", "pinch_zoom": "PINCH_ZOOM",
+        "media_autoplay": "MEDIA_AUTOPLAY", "pc_mode": "PC_MODE",
+        "long_press_menu": "LONG_PRESS_MENU", "camera_access": "CAMERA_ACCESS",
+        "microphone_access": "MICROPHONE_ACCESS", "dark_mode": "DARK_MODE",
+    }
+    for key, gradle_key in behavior_keys.items():
+        build_args.append(f"-P{gradle_key}={'true' if bool(behavior.get(key, False)) else 'false'}")
+    pro_features = config.get("pro_features") or {}
+    build_args.append(f"-PCODE_SECURITY={'true' if bool(pro_features.get('code_security', False)) else 'false'}")
     return build_args
 
 

@@ -4,6 +4,11 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.SystemClock
+import android.view.View
+import android.widget.Toast
+import android.Manifest
+import android.content.pm.PackageManager
 import android.webkit.ValueCallback
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
@@ -130,6 +135,14 @@ class MainActivity : ComponentActivity() {
     enableEdgeToEdge()
 
     val appConfig = TemplateAppConfig.fromContext(applicationContext)
+    applyWindowBehavior(appConfig)
+    val requestedPermissions = buildList {
+      if (appConfig.cameraAccess) add(Manifest.permission.CAMERA)
+      if (appConfig.microphoneAccess) add(Manifest.permission.RECORD_AUDIO)
+    }.toTypedArray()
+    if (requestedPermissions.isNotEmpty() && requestedPermissions.any { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }) {
+      requestPermissions(requestedPermissions, REQUEST_MEDIA_PERMISSIONS)
+    }
 
     setContent {
       AppTemplateTheme(darkTheme = true) {
@@ -162,6 +175,24 @@ class MainActivity : ComponentActivity() {
     super.onDestroy()
   }
 
+  private fun applyWindowBehavior(config: TemplateAppConfig) {
+    val immersive = config.hideTitleBar || config.fullscreen
+    window.decorView.systemUiVisibility = if (immersive) {
+      View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+        View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+    } else {
+      View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+    }
+  }
+
+  override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    if (requestCode == REQUEST_MEDIA_PERMISSIONS && grantResults.any { it != PackageManager.PERMISSION_GRANTED }) {
+      Toast.makeText(this, "Some website permissions were not granted.", Toast.LENGTH_SHORT).show()
+    }
+  }
+
   private fun launchFilePicker(callback: ValueCallback<Array<Uri>>): Boolean {
     pendingFileChooserCallback?.onReceiveValue(null)
     pendingFileChooserCallback = callback
@@ -183,6 +214,7 @@ class MainActivity : ComponentActivity() {
 
   companion object {
     private const val KEY_WEBVIEW_STATE = "template_webview_state_bundle"
+    private const val REQUEST_MEDIA_PERMISSIONS = 7401
   }
 }
 
@@ -220,12 +252,23 @@ fun WebApkTemplateHost(
   var webViewGeneration by remember { mutableIntStateOf(0) }
   var activeWebView by remember { mutableStateOf<WebView?>(null) }
 
-  // Intercept Android system back button/gesture whenever WebView has history
-  BackHandler(enabled = canGoBackInWebView && containerState is WebContainerState.Ready) {
+  var lastBackPressAt by remember { mutableStateOf(0L) }
+  // Intercept Android system back button/gesture according to the builder setting.
+  BackHandler(enabled = containerState is WebContainerState.Ready) {
     val webView = activeWebView
     if (webView != null && webView.canGoBack()) {
       webView.goBack()
       canGoBackInWebView = webView.canGoBack()
+    } else {
+      val activity = context as? Activity
+      if (config.exitConfirmation) {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastBackPressAt < 2000L) activity?.finish()
+        else {
+          lastBackPressAt = now
+          Toast.makeText(context, "Press back again to exit", Toast.LENGTH_SHORT).show()
+        }
+      } else activity?.finish()
     }
   }
 

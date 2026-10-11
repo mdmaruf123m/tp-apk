@@ -30,6 +30,12 @@ class TemplateJsBridge(
       put("orientation", config.configuredOrientation)
       put("theme", config.configuredTheme)
       put("allowExternalNetwork", config.allowExternalNetwork)
+      put("behavior", JSONObject().apply {
+        put("hideTitleBar", config.hideTitleBar)
+        put("fullscreen", config.fullscreen)
+        put("darkMode", config.darkMode)
+        put("codeSecurity", config.codeSecurity)
+      })
       put("androidSdkInt", Build.VERSION.SDK_INT)
       put("deviceModel", Build.MODEL ?: "Android")
       put("isTemplateReady", true)

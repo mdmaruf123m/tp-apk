@@ -1,5 +1,6 @@
 package com.example.webview
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -8,7 +9,9 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.util.Log
+import android.view.MotionEvent
 import android.view.ViewGroup
+import android.content.pm.PackageManager
 import android.webkit.ConsoleMessage
 import android.webkit.GeolocationPermissions
 import android.webkit.RenderProcessGoneDetail
@@ -20,6 +23,7 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.PermissionRequest
 import com.example.config.TemplateAppConfig
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
@@ -50,7 +54,7 @@ object TemplateWebViewController {
     config: TemplateAppConfig,
     callbacks: TemplateWebViewCallbacks,
   ): WebView {
-    if (config.enableWebViewDebug) {
+    if (config.enableWebViewDebug && !config.codeSecurity) {
       WebView.setWebContentsDebuggingEnabled(true)
     }
 
@@ -78,15 +82,22 @@ object TemplateWebViewController {
         defaultTextEncodingName = StandardCharsets.UTF_8.name()
         textZoom = 100
 
-        // Zoom controls disabled for native app feel while preserving pinch zoom if desired by CSS
-        setSupportZoom(true)
-        builtInZoomControls = true
+        // Zoom is explicitly controlled by the builder toggle.
+        setSupportZoom(config.pinchZoom)
+        builtInZoomControls = config.pinchZoom
         displayZoomControls = false
 
         // Media & caching
-        mediaPlaybackRequiresUserGesture = false
+        mediaPlaybackRequiresUserGesture = !config.mediaAutoplay
+        if (config.pcMode) {
+          userAgentString = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36"
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+          @Suppress("DEPRECATION")
+          forceDark = if (config.darkMode) WebSettings.FORCE_DARK_ON else WebSettings.FORCE_DARK_OFF
+        }
         cacheMode = WebSettings.LOAD_DEFAULT
-        mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+        mixedContentMode = if (config.codeSecurity) WebSettings.MIXED_CONTENT_NEVER_ALLOW else WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
 
         // Local asset file access:
         // Note: file:///android_asset/ works even when allowFileAccess is false on modern Android,
@@ -106,8 +117,21 @@ object TemplateWebViewController {
         addJavascriptInterface(TemplateJsBridge(context.applicationContext, config), JS_BRIDGE_NAME)
       }
 
+      if (!config.longPressMenu) {
+        setOnLongClickListener { true }
+      }
+      if (config.pullToRefresh) {
+        var downY = 0f
+        setOnTouchListener { view, event ->
+          when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> downY = event.y
+            MotionEvent.ACTION_UP -> if (event.y - downY > 150f && view.scrollY == 0) reload()
+          }
+          false
+        }
+      }
       webViewClient = createSafeWebViewClient(context.applicationContext, config, callbacks)
-      webChromeClient = createWebChromeClient(callbacks)
+      webChromeClient = createWebChromeClient(context.applicationContext, config, callbacks)
     }
   }
 
@@ -121,11 +145,13 @@ object TemplateWebViewController {
       override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
         super.onPageStarted(view, url, favicon)
         callbacks.onHistoryStateChanged(view?.canGoBack() == true)
+        if (config.loadingSpinner) view?.evaluateJavascript(LOADING_SPINNER_SCRIPT, null)
       }
 
       override fun onPageFinished(view: WebView?, url: String?) {
         super.onPageFinished(view, url)
         callbacks.onHistoryStateChanged(view?.canGoBack() == true)
+        if (config.loadingSpinner) view?.evaluateJavascript(REMOVE_LOADING_SPINNER_SCRIPT, null)
         if (url != null) {
           callbacks.onMainFrameLoadSuccess(url)
         }
@@ -229,7 +255,7 @@ object TemplateWebViewController {
     }
   }
 
-  private fun createWebChromeClient(callbacks: TemplateWebViewCallbacks): WebChromeClient {
+  private fun createWebChromeClient(context: Context, config: TemplateAppConfig, callbacks: TemplateWebViewCallbacks): WebChromeClient {
     return object : WebChromeClient() {
       override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
         if (consoleMessage != null) {
@@ -240,6 +266,15 @@ object TemplateWebViewController {
           )
         }
         return super.onConsoleMessage(consoleMessage)
+      }
+
+      override fun onPermissionRequest(request: PermissionRequest?) {
+        if (request == null) return
+        val allowed = request.resources.filter { resource ->
+          (resource == PermissionRequest.RESOURCE_VIDEO_CAPTURE && config.cameraAccess && context.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) ||
+            (resource == PermissionRequest.RESOURCE_AUDIO_CAPTURE && config.microphoneAccess && context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
+        }
+        if (allowed.size == request.resources.size) request.grant(allowed.toTypedArray()) else request.deny()
       }
 
       override fun onShowFileChooser(
@@ -271,6 +306,11 @@ object TemplateWebViewController {
       Log.w(TAG, "No activity found on device to handle external URI: $uri", e)
     }
   }
+
+  private val LOADING_SPINNER_SCRIPT = """
+    (function(){if(document.getElementById('__devlova_loading'))return;var s=document.createElement('style');s.id='__devlova_loading';s.textContent='@keyframes devlovaSpin{to{transform:rotate(360deg)}}#__devlova_loader{position:fixed;z-index:2147483647;top:18px;left:50%;width:28px;height:28px;margin-left:-14px;border:3px solid rgba(37,99,235,.2);border-top-color:#2563eb;border-radius:50%;animation:devlovaSpin .7s linear infinite}';document.documentElement.appendChild(s);var d=document.createElement('div');d.id='__devlova_loader';(document.body||document.documentElement).appendChild(d)})()
+  """.trimIndent()
+  private const val REMOVE_LOADING_SPINNER_SCRIPT = "document.getElementById('__devlova_loader')?.remove();document.getElementById('__devlova_loading')?.remove();"
 
   private fun createForbiddenResponse(reason: String): WebResourceResponse {
     val stream = ByteArrayInputStream(reason.toByteArray(StandardCharsets.UTF_8))
