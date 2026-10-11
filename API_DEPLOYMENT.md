@@ -10,7 +10,7 @@ The API accepts one build at a time. It triggers `.github/workflows/apk-build.ym
 
 ## 2. Deploy the Render Blueprint
 
-1. Click the **Deploy to Render** button at the top of the repository README (or in the builder's API Connection panel). It opens Render's Blueprint flow for this GitHub repository/feature branch; connect your Render account/repository if prompted, review the service, and deploy it. Render reads `render.yaml` and creates the `tp-apk-builder-api` Python web service.
+1. Merge the tested pull request into `main`, then click the **Deploy to Render** button at the top of the repository README (or in the builder's API Connection panel). It opens Render's Blueprint flow for this GitHub repository; connect your Render account/repository if prompted, review the service, and deploy it. Render reads `render.yaml` and creates the `tp-apk-builder-api` Python web service.
 2. Use the Free plan for the API only. It does not run Gradle; GitHub Actions does the Android build.
 3. Set these environment variables in the Render service:
    - `BUILD_API_KEY`: a long random key that authorized builder users will enter in the page.
