@@ -18,6 +18,7 @@ from urllib.parse import urlparse
 
 import httpx
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,6 +34,13 @@ PACKAGE_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+$")
 VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+\-]{0,49}$")
 
 app = FastAPI(title="APK Builder API", version="1.0.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 
 @dataclass

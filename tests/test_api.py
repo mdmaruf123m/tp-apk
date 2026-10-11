@@ -53,6 +53,21 @@ def test_health_and_api_key_check(client):
     assert client.get("/api/auth/check", headers={"Authorization": "Bearer test-builder-key"}).status_code == 200
 
 
+def test_builder_cross_origin_preflight_allows_authorized_api_requests(client):
+    response = client.options(
+        "/api/build",
+        headers={
+            "Origin": "https://builder.example",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "authorization,content-type",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "*"
+    assert "POST" in response.headers["access-control-allow-methods"]
+    assert "authorization" in response.headers["access-control-allow-headers"].lower()
+
+
 def test_rejects_invalid_package_name(client):
     data, files = html_form(package="not-a-package")
     response = client.post("/api/build", data=data, files=files, headers={"Authorization": "Bearer test-builder-key"})
