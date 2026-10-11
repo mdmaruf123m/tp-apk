@@ -194,10 +194,29 @@ def apply_icon(data: bytes) -> None:
     drawable = ROOT / "app/src/main/res/drawable"
     # Adaptive-icon foreground uses the Android safe area (about 66% of the canvas).
     fitted = make_square(image, 512)
+    # Keep the artwork inside Android's adaptive-icon safe zone. The XML
+    # foreground is a full 108dp canvas; using a 66dp XML item here would
+    # shrink the uploaded logo a second time on modern launchers.
     inner = make_square(image, 340, contain=True)
     foreground = Image.new("RGBA", (512, 512), (0, 0, 0, 0))
     foreground.alpha_composite(inner, ((512 - inner.width) // 2, (512 - inner.height) // 2))
     foreground.save(drawable / "ic_launcher_foreground_asset.png", optimize=True)
+
+    # Never use the template's dark placeholder behind a user logo. A
+    # light sampled background keeps transparent logos visible without the
+    # black square seen on Android home screens.
+    bg_image = image.convert("RGBA").resize((1, 1), Image.Resampling.BOX).getpixel((0, 0))
+    alpha = bg_image[3] / 255
+    channel = tuple(round(bg_image[i] * alpha + 255 * (1 - alpha)) for i in range(3))
+    bg_hex = "#%02X%02X%02X" % channel
+    (drawable / "ic_launcher_background.xml").write_text(
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
+        '    android:width="108dp" android:height="108dp"\n'
+        '    android:viewportWidth="108" android:viewportHeight="108">\n'
+        f'    <path android:fillColor="{bg_hex}" android:pathData="M0,0h108v108h-108z" />\n'
+        '</vector>\n', encoding="utf-8"
+    )
 
     density_sizes = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
     for density, size in density_sizes.items():
