@@ -45,6 +45,7 @@ val configWebStartUrl = getConfigProperty("WEB_START_URL", "")
 val configAllowExternalNetwork = getConfigProperty("ALLOW_EXTERNAL_NETWORK", "true").toBoolean()
 val configEnableWebViewDebug = getConfigProperty("ENABLE_WEBVIEW_DEBUG", "false").toBoolean()
 val configSplashBgColor = getConfigProperty("SPLASH_BG_COLOR", "#0F172A")
+val configStatusBarColor = getConfigProperty("STATUS_BAR_COLOR", "#0F172A")
 val configHideTitleBar = getConfigProperty("HIDE_TITLE_BAR", "true").toBoolean()
 val configLoadingSpinner = getConfigProperty("LOADING_SPINNER", "false").toBoolean()
 val configFullscreen = getConfigProperty("FULLSCREEN", "false").toBoolean()
@@ -81,6 +82,7 @@ android {
 
     // Inject dynamic string & color resources if overridden via CLI or gradle.properties
     resValue("color", "splash_background", configSplashBgColor)
+    resValue("color", "status_bar", configStatusBarColor)
 
     // Expose template configuration to Kotlin runtime via BuildConfig
     buildConfigField("String", "APP_NAME", javaStringLiteral(configAppName))

@@ -316,9 +316,12 @@ def apply_config(payload: dict) -> list[str]:
         os.environ["ENCRYPTION_KEY_B64"] = encryption_key
     else:
         os.environ.pop("ENCRYPTION_KEY_B64", None)
-    color = str(config.get("status_bar_color", "#0F172A"))
-    if re.fullmatch(r"#[0-9a-fA-F]{6}", color):
-        build_args.append(f"-PSPLASH_BG_COLOR={color}")
+    status_bar_color = str(config.get("status_bar_color", "#0F172A"))
+    splash_color = str(config.get("splash_background_color") or config.get("status_bar_color", "#0F172A"))
+    if re.fullmatch(r"#[0-9a-fA-F]{6}", status_bar_color):
+        build_args.append(f"-PSTATUS_BAR_COLOR={status_bar_color}")
+    if re.fullmatch(r"#[0-9a-fA-F]{6}", splash_color):
+        build_args.append(f"-PSPLASH_BG_COLOR={splash_color}")
     behavior = config.get("behavior") or {}
     behavior_keys = {
         "hide_title_bar": "HIDE_TITLE_BAR", "loading_spinner": "LOADING_SPINNER",
