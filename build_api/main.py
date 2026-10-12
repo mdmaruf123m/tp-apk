@@ -221,6 +221,13 @@ async def _validate_config(raw: str) -> dict[str, Any]:
     feature_access = config.get("feature_access") or {}
     if not isinstance(feature_access, dict):
         raise HTTPException(status_code=400, detail="feature_access must be an object.")
+    if build_variant == "release" and feature_access.get("release_apk") is not True:
+        raise HTTPException(status_code=403, detail="Release APK builds require an active admin-assigned plan with this feature.")
+    advanced = config.get("advanced") or {}
+    if not isinstance(advanced, dict):
+        raise HTTPException(status_code=400, detail="advanced must be an object.")
+    if (str(advanced.get("custom_css", "")).strip() or str(advanced.get("custom_javascript", "")).strip()) and feature_access.get("advanced_html") is not True:
+        raise HTTPException(status_code=403, detail="Advanced HTML options require an active admin-assigned plan with this feature.")
     asset_encryption = bool(pro_features.get("asset_encryption", False))
     subscription_active = bool(config.get("subscription_active", False))
     if asset_encryption and source != "html":

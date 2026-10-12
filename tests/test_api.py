@@ -97,6 +97,21 @@ def test_asset_encryption_is_allowed_for_entitled_custom_plan():
     assert clean["feature_access"]["asset_encryption"] is True
 
 
+def test_release_and_advanced_features_require_entitlements():
+    data, _ = html_form()
+    config = json.loads(data["config"])
+    config.update({"build_variant": "release", "user_id": "user-123", "project_id": "project-123"})
+    with pytest.raises(main.HTTPException) as release_error:
+        asyncio.run(main._validate_config(json.dumps(config)))
+    assert release_error.value.status_code == 403
+
+    config["build_variant"] = "regular"
+    config["advanced"] = {"custom_css": "body{color:red}"}
+    with pytest.raises(main.HTTPException) as advanced_error:
+        asyncio.run(main._validate_config(json.dumps(config)))
+    assert advanced_error.value.status_code == 403
+
+
 def test_accepts_first_job_and_returns_poll_url(client, monkeypatch):
     async def no_active_run():
         return None
