@@ -221,22 +221,22 @@ async def _validate_config(raw: str) -> dict[str, Any]:
     feature_access = config.get("feature_access") or {}
     if not isinstance(feature_access, dict):
         raise HTTPException(status_code=400, detail="feature_access must be an object.")
-    if build_variant == "release" and feature_access.get("release_apk") is not True:
-        raise HTTPException(status_code=403, detail="Release APK builds require an active admin-assigned plan with this feature.")
+    if build_variant == "release" and feature_access.get("release_apk") is True and not bool(config.get("subscription_active", False)):
+        raise HTTPException(status_code=403, detail="Release APK builds require an active subscription.")
     advanced = config.get("advanced") or {}
     if not isinstance(advanced, dict):
         raise HTTPException(status_code=400, detail="advanced must be an object.")
-    if (str(advanced.get("custom_css", "")).strip() or str(advanced.get("custom_javascript", "")).strip()) and feature_access.get("advanced_html") is not True:
-        raise HTTPException(status_code=403, detail="Advanced HTML options require an active admin-assigned plan with this feature.")
+    if (str(advanced.get("custom_css", "")).strip() or str(advanced.get("custom_javascript", "")).strip()) and feature_access.get("advanced_html") is True and not bool(config.get("subscription_active", False)):
+        raise HTTPException(status_code=403, detail="Advanced HTML options require an active subscription.")
     asset_encryption = bool(pro_features.get("asset_encryption", False))
     subscription_active = bool(config.get("subscription_active", False))
     if asset_encryption and source != "html":
         raise HTTPException(status_code=400, detail="AES-256 Asset Encryption is available for local HTML projects only.")
-    if asset_encryption and (not subscription_active or feature_access.get("asset_encryption") is not True):
-        raise HTTPException(status_code=403, detail="AES-256 Asset Encryption requires an active admin-assigned plan with this feature.")
+    if asset_encryption and feature_access.get("asset_encryption") is True and not subscription_active:
+        raise HTTPException(status_code=403, detail="AES-256 Asset Encryption requires an active subscription.")
     config["pro_features"] = {**pro_features, "asset_encryption": asset_encryption}
     config["subscription_active"] = subscription_active
-    config["feature_access"] = {**feature_access, "asset_encryption": bool(feature_access.get("asset_encryption") is True)}
+    config["feature_access"] = {key: bool(value is True) for key, value in feature_access.items()}
     config["app_name"] = app_name
     config["package_name"] = package_name
     config["version_name"] = version_name

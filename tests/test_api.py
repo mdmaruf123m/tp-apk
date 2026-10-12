@@ -76,17 +76,27 @@ def test_rejects_invalid_package_name(client):
     assert "Package name" in response.json()["message"]
 
 
-def test_asset_encryption_requires_assigned_plan():
+def test_asset_encryption_is_free_by_default():
     data, _ = html_form()
     config = json.loads(data["config"])
     config["pro_features"] = {"asset_encryption": True}
+    config["subscription_active"] = False
+    clean = asyncio.run(main._validate_config(json.dumps(config)))
+    assert clean["pro_features"]["asset_encryption"] is True
+
+
+def test_asset_encryption_requires_subscription_when_admin_gates_it():
+    data, _ = html_form()
+    config = json.loads(data["config"])
+    config["pro_features"] = {"asset_encryption": True}
+    config["feature_access"] = {"asset_encryption": True}
     config["subscription_active"] = False
     with pytest.raises(main.HTTPException) as error:
         asyncio.run(main._validate_config(json.dumps(config)))
     assert error.value.status_code == 403
 
 
-def test_asset_encryption_is_allowed_for_entitled_custom_plan():
+def test_asset_encryption_is_allowed_for_active_subscription():
     data, _ = html_form()
     config = json.loads(data["config"])
     config["pro_features"] = {"asset_encryption": True}
@@ -100,12 +110,13 @@ def test_asset_encryption_is_allowed_for_entitled_custom_plan():
 def test_release_and_advanced_features_require_entitlements():
     data, _ = html_form()
     config = json.loads(data["config"])
-    config.update({"build_variant": "release", "user_id": "user-123", "project_id": "project-123"})
+    config.update({"build_variant": "release", "user_id": "user-123", "project_id": "project-123", "feature_access": {"release_apk": True}})
     with pytest.raises(main.HTTPException) as release_error:
         asyncio.run(main._validate_config(json.dumps(config)))
     assert release_error.value.status_code == 403
 
     config["build_variant"] = "regular"
+    config["feature_access"] = {"advanced_html": True}
     config["advanced"] = {"custom_css": "body{color:red}"}
     with pytest.raises(main.HTTPException) as advanced_error:
         asyncio.run(main._validate_config(json.dumps(config)))
