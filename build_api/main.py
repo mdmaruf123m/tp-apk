@@ -218,12 +218,18 @@ async def _validate_config(raw: str) -> dict[str, Any]:
     pro_features = config.get("pro_features") or {}
     if not isinstance(pro_features, dict):
         raise HTTPException(status_code=400, detail="pro_features must be an object.")
+    feature_access = config.get("feature_access") or {}
+    if not isinstance(feature_access, dict):
+        raise HTTPException(status_code=400, detail="feature_access must be an object.")
     asset_encryption = bool(pro_features.get("asset_encryption", False))
     subscription_active = bool(config.get("subscription_active", False))
     if asset_encryption and source != "html":
         raise HTTPException(status_code=400, detail="AES-256 Asset Encryption is available for local HTML projects only.")
+    if asset_encryption and (not subscription_active or feature_access.get("asset_encryption") is not True):
+        raise HTTPException(status_code=403, detail="AES-256 Asset Encryption requires an active admin-assigned plan with this feature.")
     config["pro_features"] = {**pro_features, "asset_encryption": asset_encryption}
     config["subscription_active"] = subscription_active
+    config["feature_access"] = {**feature_access, "asset_encryption": bool(feature_access.get("asset_encryption") is True)}
     config["app_name"] = app_name
     config["package_name"] = package_name
     config["version_name"] = version_name

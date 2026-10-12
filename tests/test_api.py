@@ -76,13 +76,25 @@ def test_rejects_invalid_package_name(client):
     assert "Package name" in response.json()["message"]
 
 
-def test_asset_encryption_is_free_without_subscription():
+def test_asset_encryption_requires_assigned_plan():
     data, _ = html_form()
     config = json.loads(data["config"])
     config["pro_features"] = {"asset_encryption": True}
     config["subscription_active"] = False
+    with pytest.raises(main.HTTPException) as error:
+        asyncio.run(main._validate_config(json.dumps(config)))
+    assert error.value.status_code == 403
+
+
+def test_asset_encryption_is_allowed_for_entitled_custom_plan():
+    data, _ = html_form()
+    config = json.loads(data["config"])
+    config["pro_features"] = {"asset_encryption": True}
+    config["subscription_active"] = True
+    config["feature_access"] = {"asset_encryption": True}
     clean = asyncio.run(main._validate_config(json.dumps(config)))
     assert clean["pro_features"]["asset_encryption"] is True
+    assert clean["feature_access"]["asset_encryption"] is True
 
 
 def test_accepts_first_job_and_returns_poll_url(client, monkeypatch):
