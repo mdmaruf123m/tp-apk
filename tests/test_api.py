@@ -123,6 +123,25 @@ def test_release_and_advanced_features_require_entitlements():
     assert advanced_error.value.status_code == 403
 
 
+def test_all_feature_management_entitlements_are_enforced():
+    for key, usage in {
+        "source_html": {},
+        "source_web": {},
+        "branding": {"branding": True},
+        "status_colors": {"status_colors": True},
+        "behavior": {"behavior": True},
+    }.items():
+        data, _ = html_form()
+        config = json.loads(data["config"])
+        config["feature_access"] = {key: True}
+        config["feature_usage"] = usage
+        if key == "source_web":
+            config.update({"resource_type": "web", "website_url": "https://example.com"})
+        with pytest.raises(main.HTTPException) as error:
+            asyncio.run(main._validate_config(json.dumps(config)))
+        assert error.value.status_code == 403, key
+
+
 def test_accepts_first_job_and_returns_poll_url(client, monkeypatch):
     async def no_active_run():
         return None

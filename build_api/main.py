@@ -221,6 +221,20 @@ async def _validate_config(raw: str) -> dict[str, Any]:
     feature_access = config.get("feature_access") or {}
     if not isinstance(feature_access, dict):
         raise HTTPException(status_code=400, detail="feature_access must be an object.")
+    feature_usage = config.get("feature_usage") or {}
+    if not isinstance(feature_usage, dict):
+        raise HTTPException(status_code=400, detail="feature_usage must be an object.")
+    subscription_active = bool(config.get("subscription_active", False))
+    source_feature = "source_web" if source == "web" else "source_html"
+    if feature_access.get(source_feature) is True and not subscription_active:
+        raise HTTPException(status_code=403, detail="This build source requires an active subscription.")
+    for feature_key, label in {
+        "branding": "Application branding",
+        "status_colors": "Status bar and splash colors",
+        "behavior": "Behavior and permissions",
+    }.items():
+        if feature_usage.get(feature_key) is True and feature_access.get(feature_key) is True and not subscription_active:
+            raise HTTPException(status_code=403, detail=f"{label} requires an active subscription.")
     if build_variant == "release" and feature_access.get("release_apk") is True and not bool(config.get("subscription_active", False)):
         raise HTTPException(status_code=403, detail="Release APK builds require an active subscription.")
     advanced = config.get("advanced") or {}
@@ -229,7 +243,6 @@ async def _validate_config(raw: str) -> dict[str, Any]:
     if (str(advanced.get("custom_css", "")).strip() or str(advanced.get("custom_javascript", "")).strip()) and feature_access.get("advanced_html") is True and not bool(config.get("subscription_active", False)):
         raise HTTPException(status_code=403, detail="Advanced HTML options require an active subscription.")
     asset_encryption = bool(pro_features.get("asset_encryption", False))
-    subscription_active = bool(config.get("subscription_active", False))
     if asset_encryption and source != "html":
         raise HTTPException(status_code=400, detail="AES-256 Asset Encryption is available for local HTML projects only.")
     if asset_encryption and feature_access.get("asset_encryption") is True and not subscription_active:
