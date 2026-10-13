@@ -233,15 +233,19 @@ async def _process_batch(batch_id: str) -> None:
 async def _send_push_to_user(db: Any, user_id: str, data: dict[str, Any]) -> None:
     subscriptions = db.collection("push_subscriptions").where("uid", "==", user_id).stream()
     payload = json.dumps({"title": data["title"], "description": data["description"], "image": data.get("image"), "url": "/notifications"})
+    delivered = False
     for snapshot in subscriptions:
         subscription = snapshot.to_dict() or {}
         try:
-            webpush(subscription_info=subscription["subscription"], data=payload, vapid_private_key=os.environ["VAPID_PRIVATE_KEY"], vapid_claims={"sub": os.environ["VAPID_SUBJECT"]})
+            await asyncio.to_thread(webpush, subscription_info=subscription["subscription"], data=payload, vapid_private_key=os.environ["VAPID_PRIVATE_KEY"], vapid_claims={"sub": os.environ["VAPID_SUBJECT"]})
+            delivered = True
         except WebPushException as exc:
             if getattr(exc.response, "status_code", None) in (404, 410):
                 snapshot.reference.delete()
             else:
                 raise
+    if not delivered:
+        raise RuntimeError("User has no active push subscription")
 
 
 @app.post("/api/push-subscriptions", dependencies=[Depends(_admin_auth)])
