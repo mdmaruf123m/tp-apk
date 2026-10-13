@@ -107,6 +107,16 @@ def health() -> dict[str, Any]:
     return {"ok": True, "service": "notification", "configured": _service_ready()}
 
 
+@app.get("/")
+def root() -> dict[str, Any]:
+    return {
+        "service": "Devlova Notification API",
+        "ok": True,
+        "health": "/api/health",
+        "configured": _service_ready(),
+    }
+
+
 @app.post("/api/upload-image", dependencies=[Depends(_admin_auth)])
 async def upload_image(file: UploadFile = File(...)) -> dict[str, str]:
     key = os.getenv("IMGBB_API_KEY", "").strip()
