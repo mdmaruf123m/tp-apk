@@ -117,6 +117,14 @@ def root() -> dict[str, Any]:
     }
 
 
+@app.get("/api/public-config")
+def public_config() -> dict[str, Any]:
+    return {
+        "ok": True,
+        "vapidPublicKey": os.getenv("VAPID_PUBLIC_KEY", "").strip(),
+    }
+
+
 @app.post("/api/upload-image", dependencies=[Depends(_admin_auth)])
 async def upload_image(file: UploadFile = File(...)) -> dict[str, str]:
     key = os.getenv("IMGBB_API_KEY", "").strip()
