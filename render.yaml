@@ -21,3 +21,27 @@ services:
         sync: false
       - key: DOWNLOAD_SIGNING_KEY
         sync: false
+  - type: web
+    name: tp-apk-notification-api
+    runtime: python
+    plan: free
+    region: singapore
+    autoDeployTrigger: off
+    buildCommand: pip install -r notification_api/requirements.txt
+    startCommand: uvicorn notification_api.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /api/health
+    envVars:
+      - key: NOTIFICATION_API_KEY
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
+      - key: IMGBB_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
