@@ -101,6 +101,7 @@ class ChatPayload(BaseModel):
     history: list[dict[str, str]] = Field(default_factory=list, max_length=8)
     site: str = Field(default="Devlova", max_length=80)
     creator: str = Field(default="Dev Maruf (Maruf Hossain)", max_length=120)
+    language: str = Field(default="auto", max_length=20)
 
 
 def _batch_doc(snapshot: Any) -> dict[str, Any]:
@@ -141,13 +142,14 @@ async def chat(payload: ChatPayload) -> dict[str, Any]:
     model = os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini").strip()
     if not api_key:
         return {"ok": True, "reply": _local_chat_reply(message)}
+    language_hint = "Reply in Bengali because the user used Bengali." if payload.language.lower() == "bengali" else "Reply in English because the user used English."
     system = (
         "You are Dev Ai Code, the friendly assistant inside the Devlova website. "
         "Answer questions about Devlova and its features accurately and concisely. "
         "The creator is Dev Maruf, also known as Maruf Hossain. "
         "Devlova is a web platform for turning HTML projects into Android APKs; it has an editor, "
         "Store, Lab, standalone project preview, notifications, account and build features. "
-        "If a question is unrelated, politely say you are focused on Devlova. Use the user's language when clear."
+        "If a question is unrelated, politely say you are focused on Devlova. " + language_hint
     )
     messages: list[dict[str, str]] = [{"role": "system", "content": system}]
     for item in payload.history[-8:]:
@@ -175,17 +177,18 @@ async def chat(payload: ChatPayload) -> dict[str, Any]:
 
 def _local_chat_reply(message: str) -> str:
     q = message.lower()
+    bn = any("\u0980" <= char <= "\u09ff" for char in message)
     if any(x in q for x in ("who built", "who made", "creator", "developer", "বানিয়েছে", "নির্মাতা")):
-        return "Devlova was built by Dev Maruf, also known as Maruf Hossain."
+        return "Devlova তৈরি করেছেন Dev Maruf, যিনি Maruf Hossain নামেও পরিচিত।" if bn else "Devlova was built by Dev Maruf, also known as Maruf Hossain."
     if any(x in q for x in ("store", "স্টোর", "product", "প্রোডাক্ট")):
-        return "The Store page contains admin-managed products and resources with optional external order links."
+        return "Store page-এ Admin Panel থেকে managed product ও resource দেখা যায়।" if bn else "The Store page contains admin-managed products and resources with optional external order links."
     if any(x in q for x in ("lab", "ল্যাব", "preview", "প্রিভিউ")):
-        return "The Lab page contains HTML projects that you can preview, open in a standalone page, and clone."
+        return "Lab page-এ HTML project preview, standalone preview এবং clone করা যায়।" if bn else "The Lab page contains HTML projects that you can preview, open in a standalone page, and clone."
     if any(x in q for x in ("editor", "এডিটর", "code")):
-        return "The Code Editor supports HTML, CSS and JavaScript with CodeMirror line numbers and a compact three-dot menu."
+        return "Code Editor-এ HTML, CSS, JavaScript, CodeMirror line number এবং compact three-dot menu আছে।" if bn else "The Code Editor supports HTML, CSS and JavaScript with CodeMirror line numbers and a compact three-dot menu."
     if any(x in q for x in ("notification", "নোটিফিকেশন", "push")):
-        return "Devlova supports regular Firestore notifications and Web Push notifications for users."
-    return "I can help with Devlova's editor, Store, Lab, preview, notifications, account and APK builder. Please ask with a little more detail."
+        return "Devlova-তে regular Firestore notification এবং Web Push notification support আছে।" if bn else "Devlova supports regular Firestore notifications and Web Push notifications for users."
+    return "আমি Devlova-এর editor, Store, Lab, preview, notifications, account এবং APK builder বিষয়ে সাহায্য করতে পারি। একটু বিস্তারিত প্রশ্ন করুন।" if bn else "I can help with Devlova's editor, Store, Lab, preview, notifications, account and APK builder. Please ask with a little more detail."
 
 
 @app.post("/api/upload-image", dependencies=[Depends(_admin_auth)])
