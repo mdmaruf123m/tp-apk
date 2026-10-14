@@ -104,6 +104,15 @@ class ChatPayload(BaseModel):
     language: str = Field(default="auto", max_length=20)
 
 
+class ProviderChatPayload(BaseModel):
+    provider: str = Field(pattern="^(openrouter|groq)$")
+    api_key: str = Field(min_length=8, max_length=500)
+    model: str | None = Field(default=None, max_length=180)
+    message: str = Field(min_length=1, max_length=12000)
+    history: list[dict[str, str]] = Field(default_factory=list, max_length=8)
+    language: str = Field(default="auto", max_length=20)
+
+
 def _batch_doc(snapshot: Any) -> dict[str, Any]:
     data = snapshot.to_dict() or {}
     data["id"] = snapshot.id
@@ -166,6 +175,39 @@ async def chat(payload: ChatPayload) -> dict[str, Any]:
     except Exception:
         pass
     return {"ok": True, "reply": _local_chat_reply(message)}
+
+
+@app.post("/api/provider-chat")
+async def provider_chat(payload: ProviderChatPayload) -> dict[str, Any]:
+    """CORS-safe proxy. The browser-supplied key is used only for this request and is never stored."""
+    endpoint = "https://openrouter.ai/api/v1/chat/completions" if payload.provider == "openrouter" else "https://api.groq.com/openai/v1/chat/completions"
+    model = payload.model.strip() if payload.provider == "openrouter" and payload.model else "llama-3.3-70b-versatile"
+    language = "Bengali" if payload.language.lower() == "bengali" else "English"
+    system = f"You are a general-purpose AI assistant. Reply in {language}. Help with questions and writing, explaining, debugging, HTML, CSS, JavaScript and other code. When code is requested, provide complete useful code."
+    messages: list[dict[str, str]] = [{"role": "system", "content": system}]
+    for item in payload.history[-8:]:
+        role, content = item.get("role"), str(item.get("content", "")).strip()
+        if role in {"user", "assistant"} and content:
+            messages.append({"role": role, "content": content[:12000]})
+    messages.append({"role": "user", "content": payload.message.strip()})
+    headers = {"Authorization": f"Bearer {payload.api_key.strip()}", "Content-Type": "application/json"}
+    if payload.provider == "openrouter":
+        headers.update({"HTTP-Referer": "https://devlova.pages.dev", "X-Title": "Dev Ai Code"})
+    try:
+        async with httpx.AsyncClient(timeout=45) as client:
+            response = await client.post(endpoint, headers=headers, json={"model": model, "messages": messages, "temperature": 0.35, "max_tokens": 2500})
+        if not response.is_success:
+            detail = response.text[:500]
+            raise HTTPException(response.status_code, f"{payload.provider} API error: {detail}")
+        data = response.json()
+        reply = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        if not reply:
+            raise HTTPException(502, "The AI provider returned an empty response")
+        return {"ok": True, "reply": reply, "model": model}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(502, f"AI provider request failed: {exc}") from exc
 
 
 def _local_chat_reply(message: str) -> str:
