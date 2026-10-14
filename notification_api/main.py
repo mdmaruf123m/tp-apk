@@ -96,6 +96,13 @@ class BatchPatch(BaseModel):
     batch_size: int | None = Field(default=None, ge=1, le=500)
 
 
+class ChatPayload(BaseModel):
+    message: str = Field(min_length=1, max_length=1200)
+    history: list[dict[str, str]] = Field(default_factory=list, max_length=8)
+    site: str = Field(default="Devlova", max_length=80)
+    creator: str = Field(default="Dev Maruf (Maruf Hossain)", max_length=120)
+
+
 def _batch_doc(snapshot: Any) -> dict[str, Any]:
     data = snapshot.to_dict() or {}
     data["id"] = snapshot.id
@@ -123,6 +130,62 @@ def public_config() -> dict[str, Any]:
         "ok": True,
         "vapidPublicKey": os.getenv("VAPID_PUBLIC_KEY", "").strip(),
     }
+
+
+@app.post("/api/chat")
+async def chat(payload: ChatPayload) -> dict[str, Any]:
+    """Public chat surface for the removable Dev Ai UI; the LLM key stays server-side."""
+    message = payload.message.strip()
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    api_base = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1").rstrip("/")
+    model = os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini").strip()
+    if not api_key:
+        return {"ok": True, "reply": _local_chat_reply(message)}
+    system = (
+        "You are Dev Ai Code, the friendly assistant inside the Devlova website. "
+        "Answer questions about Devlova and its features accurately and concisely. "
+        "The creator is Dev Maruf, also known as Maruf Hossain. "
+        "Devlova is a web platform for turning HTML projects into Android APKs; it has an editor, "
+        "Store, Lab, standalone project preview, notifications, account and build features. "
+        "If a question is unrelated, politely say you are focused on Devlova. Use the user's language when clear."
+    )
+    messages: list[dict[str, str]] = [{"role": "system", "content": system}]
+    for item in payload.history[-8:]:
+        role = item.get("role")
+        content = str(item.get("content", "")).strip()
+        if role in {"user", "assistant"} and content:
+            messages.append({"role": role, "content": content[:1200]})
+    messages.append({"role": "user", "content": message})
+    try:
+        async with httpx.AsyncClient(timeout=25) as client:
+            response = await client.post(
+                api_base + "/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={"model": model, "messages": messages, "temperature": 0.35, "max_tokens": 350},
+            )
+        if response.is_success:
+            data = response.json()
+            reply = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+            if reply:
+                return {"ok": True, "reply": reply}
+    except Exception:
+        pass
+    return {"ok": True, "reply": _local_chat_reply(message)}
+
+
+def _local_chat_reply(message: str) -> str:
+    q = message.lower()
+    if any(x in q for x in ("who built", "who made", "creator", "developer", "বানিয়েছে", "নির্মাতা")):
+        return "Devlova was built by Dev Maruf, also known as Maruf Hossain."
+    if any(x in q for x in ("store", "স্টোর", "product", "প্রোডাক্ট")):
+        return "The Store page contains admin-managed products and resources with optional external order links."
+    if any(x in q for x in ("lab", "ল্যাব", "preview", "প্রিভিউ")):
+        return "The Lab page contains HTML projects that you can preview, open in a standalone page, and clone."
+    if any(x in q for x in ("editor", "এডিটর", "code")):
+        return "The Code Editor supports HTML, CSS and JavaScript with CodeMirror line numbers and a compact three-dot menu."
+    if any(x in q for x in ("notification", "নোটিফিকেশন", "push")):
+        return "Devlova supports regular Firestore notifications and Web Push notifications for users."
+    return "I can help with Devlova's editor, Store, Lab, preview, notifications, account and APK builder. Please ask with a little more detail."
 
 
 @app.post("/api/upload-image", dependencies=[Depends(_admin_auth)])
