@@ -113,6 +113,11 @@ class ProviderChatPayload(BaseModel):
     language: str = Field(default="auto", max_length=20)
 
 
+class ProviderModelsPayload(BaseModel):
+    provider: str = Field(pattern="^(openrouter|groq)$")
+    api_key: str = Field(min_length=8, max_length=500)
+
+
 def _batch_doc(snapshot: Any) -> dict[str, Any]:
     data = snapshot.to_dict() or {}
     data["id"] = snapshot.id
@@ -208,6 +213,31 @@ async def provider_chat(payload: ProviderChatPayload) -> dict[str, Any]:
         raise
     except Exception as exc:
         raise HTTPException(502, f"AI provider request failed: {exc}") from exc
+
+
+@app.post("/api/provider-models")
+async def provider_models(payload: ProviderModelsPayload) -> dict[str, Any]:
+    """Return provider models using the submitted key transiently; no key is stored."""
+    endpoint = "https://openrouter.ai/api/v1/models" if payload.provider == "openrouter" else "https://api.groq.com/openai/v1/models"
+    headers = {"Authorization": f"Bearer {payload.api_key.strip()}"}
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.get(endpoint, headers=headers)
+        if not response.is_success:
+            raise HTTPException(response.status_code, f"{payload.provider} models error: {response.text[:500]}")
+        raw = response.json().get("data", [])
+        models = []
+        for item in raw:
+            model_id = str(item.get("id", "")).strip()
+            if not model_id:
+                continue
+            models.append({"id": model_id, "name": item.get("name") or model_id, "context": item.get("context_length")})
+        models.sort(key=lambda item: item["id"].lower())
+        return {"ok": True, "provider": payload.provider, "models": models}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(502, f"Model list request failed: {exc}") from exc
 
 
 def _local_chat_reply(message: str) -> str:
