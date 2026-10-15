@@ -8,6 +8,10 @@ on:
         description: Render API job identifier
         required: true
         type: string
+      config_json:
+        description: Optional direct build configuration JSON
+        required: false
+        type: string
 
 permissions:
   actions: write
@@ -58,6 +62,7 @@ jobs:
       - name: Prepare project and build APK
         env:
           JOB_ID: ${{ inputs.job_id }}
+          DIRECT_CONFIG_JSON: ${{ inputs.config_json }}
           BUILD_API_URL: ${{ secrets.BUILD_API_URL }}
           INTERNAL_WORKER_TOKEN: ${{ secrets.INTERNAL_WORKER_TOKEN }}
           KEYSTORE_REPO_DIR: ${{ github.workspace }}/keystore-store

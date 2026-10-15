@@ -111,6 +111,15 @@ def artifact_filename(app_name: str, variant: str) -> str:
 
 
 def fetch_payload(job_id: str) -> dict:
+    direct = os.environ.get("DIRECT_CONFIG_JSON", "").strip()
+    if direct:
+        try:
+            config = json.loads(direct)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("DIRECT_CONFIG_JSON must be valid JSON.") from exc
+        if not isinstance(config, dict):
+            raise RuntimeError("DIRECT_CONFIG_JSON must contain a JSON object.")
+        return {"job_id": job_id, "config": config, "files": {}}
     api_url = os.environ.get("BUILD_API_URL", "").strip().rstrip("/")
     token = os.environ.get("INTERNAL_WORKER_TOKEN", "").strip()
     if not api_url or not token:
