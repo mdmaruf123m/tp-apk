@@ -12,12 +12,13 @@ The API accepts one build at a time. It triggers `.github/workflows/apk-build.ym
 
 1. Merge the tested pull request into `main`, then click the **Deploy to Render** button at the top of the repository README (or in the builder's API Connection panel). It opens Render's Blueprint flow for this GitHub repository; connect your Render account/repository if prompted, review the service, and deploy it. Render reads `render.yaml` and creates the `tp-apk-builder-api` Python web service.
 2. Use the Free plan for the API only. It does not run Gradle; GitHub Actions does the Android build.
-3. Set these environment variables in the Render service:
+3. Set these environment variables in your hosting panel (Render, Botkeep, or equivalent):
    - `BUILD_API_KEY`: a long random key that authorized builder users will enter in the page.
    - `GITHUB_TOKEN`: the fine-grained GitHub token described above.
    - `INTERNAL_WORKER_TOKEN`: another long random value, also added below as an Actions secret.
    - `DOWNLOAD_SIGNING_KEY`: a separate long random value used to sign six-hour download URLs.
-4. Wait for the Render service to deploy. `GET /api/health` should report `configured: true`.
+   - `PUBLIC_API_URL`: the public HTTPS base URL of the API, with no path suffix (for Botkeep: `https://jhvjmt.bot-keep.xyz`). This ensures status and signed download links use HTTPS behind a proxy.
+4. Restart/redeploy the service. `GET /api/health` should report `configured: true`.
 
 Generate random values with `python -c 'import secrets; print(secrets.token_urlsafe(48))'`. Use a different value for each secret. Never commit these values.
 
@@ -25,14 +26,14 @@ Generate random values with `python -c 'import secrets; print(secrets.token_urls
 
 In GitHub, open **Settings → Secrets and variables → Actions → New repository secret** and add:
 
-- `BUILD_API_URL`: the Render service base URL, for example `https://tp-apk-builder-api.onrender.com` (no `/api/build` suffix).
+- `BUILD_API_URL`: the hosted API base URL (for Botkeep: `https://jhvjmt.bot-keep.xyz`; no `/api/health` or `/api/build` suffix).
 - `INTERNAL_WORKER_TOKEN`: exactly the value configured on Render.
 
 The browser never receives the GitHub token or the internal worker token. It only sends `BUILD_API_KEY` in an Authorization header.
 
 ## 4. Connect the single-file frontend
 
-Open the Render service URL. On `apk-builder.html`, enter the Render service base URL and `BUILD_API_KEY`, then choose **Save API**. The page verifies the key. Press **BUILD APK** to receive a job ID; it polls the job endpoint every four seconds and displays a download link when the run finishes. The signed download link is valid for six hours; the Actions artifact is retained for seven days.
+Open the hosted service URL. On `apk-builder.html`, enter the service base URL and `BUILD_API_KEY`, then choose **Save API**. The page verifies the key. Press **BUILD APK** to receive a job ID; it polls the job endpoint every four seconds and displays a download button when the run finishes. The button shows preparation progress and then actual transfer progress while fetching the APK. The signed download link is valid for six hours; the Actions artifact is retained for seven days.
 
 ## Runtime notes
 

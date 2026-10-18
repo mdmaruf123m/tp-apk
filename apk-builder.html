@@ -53,6 +53,21 @@ button{cursor:pointer;font:inherit}
 .export{width:100%;padding:10px;background:white;color:var(--blue);border:1px solid #c8d9f5;border-radius:9px;font-weight:bold;margin-top:8px}
 .result{display:none;margin-top:10px;padding:11px;border-radius:8px;background:#eaf8ef;color:#167547;font-size:11px;overflow-wrap:anywhere;line-height:1.6}
 .result.show{display:block}.result.err{background:#fff0f0;color:#b42318}
+[hidden]{display:none!important}
+.download-overlay{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(10,20,38,.66);backdrop-filter:blur(7px)}
+.download-dialog{width:min(100%,430px);padding:27px 24px 22px;border:1px solid #d9e7f7;border-radius:20px;background:linear-gradient(155deg,#fff 0%,#f5f9ff 100%);box-shadow:0 24px 80px #07152d55;text-align:center;animation:download-pop .28s ease-out}
+.download-mark{width:54px;height:54px;margin:0 auto 12px;border-radius:17px;display:grid;place-items:center;color:#fff;font-size:27px;background:linear-gradient(135deg,var(--blue),var(--cyan));box-shadow:0 9px 22px #2867e844}
+.download-eyebrow{margin:0 0 6px;color:var(--blue);font-size:10px;font-weight:bold;letter-spacing:1.6px}
+.download-dialog h2{margin:0;color:#17243a;font-size:21px}
+.download-quote{min-height:42px;margin:12px 0 18px;color:#63748e;font-size:13px;line-height:1.6}
+.download-track{height:12px;padding:2px;overflow:hidden;border-radius:99px;background:#e5edf7;box-shadow:inset 0 1px 3px #17243a16}
+.download-progress{width:0;height:100%;border-radius:99px;background:linear-gradient(90deg,#2867e8,#11afd0,#46d3aa);background-size:200% 100%;animation:download-shimmer 1.6s linear infinite;transition:width .35s ease}
+.download-meta{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:10px;text-align:left}
+.download-meta span{color:#63748e;font-size:11px;line-height:1.4}.download-meta strong{color:#2867e8;font-size:14px;min-width:38px;text-align:right}
+.download-note{margin:12px 0 17px;color:#8492a8;font-size:10px;line-height:1.5}
+.download-close{padding:9px 18px;border:1px solid #d6e1ee;border-radius:9px;background:#fff;color:#52647e;font-weight:bold}
+@keyframes download-shimmer{to{background-position:-200% 0}}
+@keyframes download-pop{from{opacity:0;transform:translateY(9px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 .terminal{background:#101827;color:#d4e2f7;border-radius:10px;overflow:hidden;margin-top:12px;border:1px solid #25364f}
 .termhead{display:flex;align-items:center;gap:7px;background:#18253a;padding:10px 12px;font-size:11px;font-weight:bold}
 .dot{width:8px;height:8px;border-radius:50%;background:#28c77b}
@@ -133,6 +148,19 @@ button{cursor:pointer;font:inherit}
 
 <div class="buildbar"><button class="build" type="button" onclick="buildApk()">⚡ BUILD APK</button></div>
 
+<div id="downloadOverlay" class="download-overlay" hidden>
+ <section class="download-dialog" role="dialog" aria-modal="true" aria-labelledby="downloadTitle">
+  <div class="download-mark" aria-hidden="true">↓</div>
+  <p class="download-eyebrow">APK DOWNLOAD</p>
+  <h2 id="downloadTitle">আপনার APK প্রস্তুত হচ্ছে</h2>
+  <p id="downloadQuote" class="download-quote">আর একটু অপেক্ষা—আপনার অ্যাপটি পথে আছে।</p>
+  <div id="downloadTrack" class="download-track" role="progressbar" aria-label="APK download progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="downloadProgress" class="download-progress"></div></div>
+  <div class="download-meta"><span id="downloadMessage">সার্ভার থেকে APK প্রস্তুত করা হচ্ছে…</span><strong id="downloadPercent">0%</strong></div>
+  <p class="download-note">প্রস্তুতির ধাপের শতাংশ আনুমানিক; ফাইল আসার পরের অগ্রগতি প্রকৃত download bytes থেকে দেখানো হবে।</p>
+  <button id="downloadClose" class="download-close" type="button">বাতিল</button>
+ </section>
+</div>
+
 <script>
 const state={source:"web"};
 function toggleAccordion(id){document.getElementById(id).classList.toggle("open")}
@@ -174,7 +202,15 @@ document.getElementById("saveApi").addEventListener("click",async()=>{
 function collectConfig(){const config={app_name:document.getElementById("appName").value.trim(),package_name:document.getElementById("packageName").value.trim(),resource_type:state.source,website_url:document.getElementById("websiteUrl").value.trim(),html_code:document.getElementById("htmlCode").value,version_name:document.getElementById("versionName").value.trim(),version_code:document.getElementById("versionCode").value,status_bar_color:document.getElementById("barHex").value};if(state.source==="html")config.advanced={custom_css:document.getElementById("customCss").value,custom_javascript:document.getElementById("customJs").value};return config}
 document.getElementById("exportBtn").addEventListener("click",()=>{const blob=new Blob([JSON.stringify(collectConfig(),null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="apk-builder-config.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);log("Configuration JSON exported.","good")});
 function setBuildButtons(disabled){document.querySelectorAll(".build").forEach(button=>{button.disabled=disabled;button.style.opacity=disabled?".65":"1"})}
-function showDownloadLink(url){result.textContent="APK build completed. ";const link=document.createElement("a");link.href=url;link.textContent="Download APK";link.rel="noopener";link.style.fontWeight="bold";result.appendChild(link);log("APK is ready. Download link expires in 6 hours.","good")}
+const downloadOverlay=document.getElementById("downloadOverlay"),downloadProgress=document.getElementById("downloadProgress"),downloadTrack=document.getElementById("downloadTrack"),downloadPercent=document.getElementById("downloadPercent"),downloadMessage=document.getElementById("downloadMessage"),downloadQuote=document.getElementById("downloadQuote"),downloadTitle=document.getElementById("downloadTitle"),downloadClose=document.getElementById("downloadClose");
+const downloadQuotes=["আর একটু অপেক্ষা—আপনার অ্যাপটি পথে আছে।","ধৈর্যের পরেই আসে নিজের অ্যাপ হাতে পাওয়ার আনন্দ।","আপনার পরিশ্রমের APK এখন প্রস্তুত হচ্ছে।","ছোট্ট অপেক্ষা, তারপরই ইনস্টল করার পালা।"];
+let downloadQuoteTimer=null,downloadPrepTimer=null,downloadController=null,downloadButton=null;
+function setDownloadProgress(value,message){const amount=Math.max(0,Math.min(100,value));downloadProgress.style.width=amount+"%";downloadTrack.setAttribute("aria-valuenow",String(Math.round(amount)));downloadPercent.textContent=Math.round(amount)+"%";downloadMessage.textContent=message}
+function hideDownloadModal(abort=true){if(abort&&downloadController)downloadController.abort();downloadOverlay.hidden=true;if(downloadQuoteTimer)clearInterval(downloadQuoteTimer);if(downloadPrepTimer)clearInterval(downloadPrepTimer);downloadQuoteTimer=null;downloadPrepTimer=null}
+downloadClose.addEventListener("click",()=>hideDownloadModal(true));
+function showDownloadLink(url){result.textContent="APK build completed. ";downloadButton=document.createElement("button");downloadButton.type="button";downloadButton.className="btn";downloadButton.textContent="Download APK";downloadButton.addEventListener("click",()=>downloadApk(url));result.appendChild(downloadButton);log("APK is ready. Download link expires in 6 hours.","good")}
+async function downloadApk(url){if(downloadController)return;downloadController=new AbortController();const controller=downloadController;if(downloadButton)downloadButton.disabled=true;downloadOverlay.hidden=false;downloadTitle.textContent="আপনার APK প্রস্তুত হচ্ছে";downloadClose.textContent="বাতিল";downloadClose.onclick=null;downloadQuote.textContent=downloadQuotes[0];setDownloadProgress(0,"সার্ভার থেকে APK প্রস্তুত করা হচ্ছে…");let quoteIndex=0;const started=Date.now();downloadQuoteTimer=setInterval(()=>{quoteIndex=(quoteIndex+1)%downloadQuotes.length;downloadQuote.textContent=downloadQuotes[quoteIndex]},3200);downloadPrepTimer=setInterval(()=>{const estimated=Math.min(88,((Date.now()-started)/180000)*88);setDownloadProgress(estimated,"সার্ভার APK প্রস্তুত করছে…")},500);downloadClose.onclick=()=>hideDownloadModal(true);
+ try{const target=new URL(url),base=new URL(apiBase());if(target.hostname===base.hostname&&base.protocol==="https:")target.protocol="https:";const response=await fetch(target.href,{cache:"no-store",signal:controller.signal});if(downloadPrepTimer){clearInterval(downloadPrepTimer);downloadPrepTimer=null}if(!response.ok)throw new Error(await readApiError(response));setDownloadProgress(90,"APK পাওয়া গেছে—download data গ্রহণ করা হচ্ছে…");const total=Number(response.headers.get("content-length")||0);let blob;if(response.body&&response.body.getReader){const reader=response.body.getReader(),chunks=[];let loaded=0;while(true){const part=await reader.read();if(part.done)break;chunks.push(part.value);loaded+=part.value.byteLength;const received=total>0?90+Math.min(9,(loaded/total)*9):Math.min(98,90+loaded/1048576);setDownloadProgress(received,"APK ডাউনলোড হচ্ছে…")};blob=new Blob(chunks,{type:response.headers.get("content-type")||"application/vnd.android.package-archive"})}else{blob=await response.blob();setDownloadProgress(99,"APK ডাউনলোড সম্পূর্ণ—ফাইল সংরক্ষণ করা হচ্ছে…")};const objectUrl=URL.createObjectURL(blob),anchor=document.createElement("a");anchor.href=objectUrl;anchor.download="app-debug.apk";anchor.style.display="none";document.body.appendChild(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(objectUrl),60000);setDownloadProgress(100,"সম্পূর্ণ—APK আপনার ডিভাইসে সংরক্ষণ শুরু হয়েছে।");downloadTitle.textContent="APK ডাউনলোড শুরু হয়েছে";downloadClose.textContent="বন্ধ করুন";downloadClose.onclick=()=>hideDownloadModal(false);log("APK download started.","good");setTimeout(()=>{if(!downloadOverlay.hidden)hideDownloadModal(false)},2400)}catch(error){if(error.name==="AbortError")return;downloadTitle.textContent="ডাউনলোড সম্পন্ন হয়নি";setDownloadProgress(0,error.message||"ডাউনলোডে সমস্যা হয়েছে। আবার চেষ্টা করুন।");downloadClose.textContent="বন্ধ করুন";downloadClose.onclick=()=>hideDownloadModal(false);log(error.message||"APK download failed.","bad")}finally{if(downloadQuoteTimer){clearInterval(downloadQuoteTimer);downloadQuoteTimer=null}if(downloadPrepTimer){clearInterval(downloadPrepTimer);downloadPrepTimer=null}downloadController=null;if(downloadButton)downloadButton.disabled=false}}
 async function pollJob(jobId,statusUrl){if(polling)return;polling=true;setBuildButtons(true);termStatus.textContent="Running";localStorage.setItem("apk_builder_active_job",JSON.stringify({job_id:jobId,status_url:statusUrl}));log("Tracking job "+jobId+".");let lastMessage="";
  try{while(true){await new Promise(resolve=>setTimeout(resolve,4000));const response=await fetch(statusUrl,{headers:authHeaders(),cache:"no-store"});if(!response.ok)throw new Error(await readApiError(response));const data=await response.json();
   if(data.status==="complete"){termStatus.textContent="Complete";result.className="result show";showDownloadLink(data.download_url);localStorage.removeItem("apk_builder_active_job");break}

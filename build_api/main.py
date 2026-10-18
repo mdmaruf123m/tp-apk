@@ -64,6 +64,11 @@ def _required_env(name: str) -> str:
     return value
 
 
+def _public_base_url(request: Request) -> str:
+    configured = os.getenv("PUBLIC_API_URL", "").strip().rstrip("/")
+    return configured or str(request.base_url).rstrip("/")
+
+
 def _missing_service_env() -> list[str]:
     return [name for name in REQUIRED_SERVICE_ENV if not os.getenv(name, "").strip()]
 
@@ -371,7 +376,7 @@ async def create_build(
             raise
         active_job_id = job_id
 
-    base_url = os.getenv("PUBLIC_API_URL", str(request.base_url).rstrip("/"))
+    base_url = _public_base_url(request)
     return JSONResponse(
         status_code=202,
         content={
@@ -414,7 +419,7 @@ async def job_status(job_id: str, request: Request) -> dict[str, Any]:
         "run_url": run.get("html_url"),
     }
     if normalized == "complete":
-        result["download_url"] = _signed_download(job_id, str(request.base_url))
+        result["download_url"] = _signed_download(job_id, _public_base_url(request))
         result["download_expires_in_seconds"] = DOWNLOAD_TTL_SECONDS
     if normalized in {"complete", "failed", "cancelled"} and active_job_id == job_id:
         active_job_id = None
@@ -472,7 +477,11 @@ async def download_apk(job_id: str, expires: int, sig: str) -> StreamingResponse
     except zipfile.BadZipFile as exc:
         raise HTTPException(status_code=502, detail="GitHub returned an invalid APK artifact archive.") from exc
 
-    headers = {"Content-Disposition": f'attachment; filename="{Path(apk_name).name}"', "Cache-Control": "private, no-store"}
+    headers = {
+        "Content-Disposition": f'attachment; filename="{Path(apk_name).name}"',
+        "Cache-Control": "private, no-store",
+        "Content-Length": str(len(apk_bytes)),
+    }
     return StreamingResponse(io.BytesIO(apk_bytes), media_type="application/vnd.android.package-archive", headers=headers)
 
 

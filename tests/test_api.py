@@ -21,6 +21,7 @@ def reset_runtime(monkeypatch):
     monkeypatch.setenv("INTERNAL_WORKER_TOKEN", "test-worker-token")
     monkeypatch.setenv("DOWNLOAD_SIGNING_KEY", "test-signing-key")
     monkeypatch.setenv("GITHUB_REPOSITORY", "mdmaruf123m/tp-apk")
+    monkeypatch.delenv("PUBLIC_API_URL", raising=False)
     main.jobs.clear()
     main.active_job_id = None
     yield
@@ -164,6 +165,23 @@ def test_accepts_first_job_and_returns_poll_url(client, monkeypatch):
     assert main.active_job_id == body["job_id"]
 
 
+def test_completed_job_uses_configured_public_https_url(client, monkeypatch):
+    monkeypatch.setenv("PUBLIC_API_URL", "https://jhvjmt.bot-keep.xyz/")
+
+    async def completed_run(job_id):
+        return {"id": 123, "status": "completed", "conclusion": "success", "html_url": "https://github.example/run/123"}
+
+    monkeypatch.setattr(main, "_find_run", completed_run)
+    response = client.get(
+        "/api/jobs/job-123",
+        headers={"Authorization": "Bearer test-builder-key"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["download_url"].startswith("https://jhvjmt.bot-keep.xyz/api/jobs/job-123/download?")
+
+
 def test_rejects_second_job_while_first_is_running(client, monkeypatch):
     main.active_job_id = "existing-job"
 
@@ -224,3 +242,4 @@ def test_signed_download_proxies_apk_from_github_artifact(client, monkeypatch):
     assert response.status_code == 200
     assert response.content == b"fake-apk-bytes"
     assert response.headers["content-type"].startswith("application/vnd.android.package-archive")
+    assert response.headers["content-length"] == str(len(b"fake-apk-bytes"))
